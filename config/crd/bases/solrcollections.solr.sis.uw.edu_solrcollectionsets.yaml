@@ -1,0 +1,290 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: solrcollectionsets.solrcollections.solr.sis.uw.edu
+spec:
+  group: solrcollections.solr.sis.uw.edu
+  names:
+    kind: SolrCollectionSet
+    listKind: SolrCollectionSetList
+    plural: solrcollectionsets
+    shortNames:
+    - collections
+    singular: solrcollectionset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The name of the Solr cluster
+      jsonPath: .spec.clusterName
+      name: CLUSTER
+      type: string
+    - description: The ratio of defined vs provisioned collections in the set
+      jsonPath: .status.readyRatio
+      name: READY
+      type: string
+    - description: The replication factor of the collection set
+      jsonPath: .spec.replicationFactor
+      name: RFACTOR
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: SolrCollectionSet is the Schema for the solrcollectionsets API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of SolrCollectionSet
+            properties:
+              active:
+                description: Active Determines if the CollectionSet is being actively
+                  managed or management has been paused
+                type: boolean
+              blueGreenEnabled:
+                description: BlueGreenEnabled Determines if the _blue/_green strategy
+                  for managing collections is used.
+                type: boolean
+              cleanupEnabled:
+                description: |-
+                  CleanupEnabled Determines if collections which aren't in the spec are deleted. If this is false you could deploy
+                  multiple collection sets on the same Solr cluster. Otherwise, during the reconcile process collections that
+                  aren't in the spec would be removed.
+                type: boolean
+              clusterName:
+                description: SolrClusterName The name of Solr Cluster to which this
+                  cluster set belongs. This value is really just informational.
+                type: string
+              clusterUrl:
+                description: SolrClusterUrl The URL to use to interact with the Solr
+                  cluster. If omitted defaults to `http://<name>-solrcloud:8389/solr/admin
+                type: string
+              collections:
+                description: Collections The collections that will be managed.
+                items:
+                  maxProperties: 100
+                  minProperties: 0
+                  properties:
+                    alias:
+                      description: |-
+                        The name of alias that will be created for this collection. If blue/green isn't enabled this will be the same as
+                        name and no alias will actually be created (as it isn't necessary).
+                      maxLength: 100
+                      minLength: 1
+                      pattern: '[a-zA-Z0-9]([-_a-zA-Z0-9]*[a-zA-Z0-9])?'
+                      type: string
+                    configsetName:
+                      description: |-
+                        configsetName The name of the Kubernetes configmap that contains the schema for this collection. If not provided
+                        this will be the same as "alias".
+                      maxLength: 100
+                      minLength: 1
+                      type: string
+                    name:
+                      description: The full name of the managed collection.
+                      maxLength: 100
+                      minLength: 1
+                      pattern: '[a-zA-Z0-9]([-_a-zA-Z0-9]*[a-zA-Z0-9])?'
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              replicationFactor:
+                description: ReplicationFactor The replication factor of the collections
+                  in the set
+                format: int32
+                type: integer
+              secretName:
+                description: |-
+                  SecretRef The name of the Kubernetes Secret that stores the basic auth secret used to call the Solr API.
+                  This secret must be in the same namespace as the collections operator.
+                  It should be hashed in the format that Solr expects.
+                type: string
+            required:
+            - clusterName
+            - collections
+            - secretName
+            type: object
+          status:
+            description: status defines the observed state of SolrCollectionSet
+            properties:
+              collections:
+                description: SolrNodes contain the statuses of each solr node running
+                  in this solr cloud.
+                items:
+                  description: SolrCollectionStatus defines the observed state of
+                    a SolrCollection.
+                  properties:
+                    active:
+                      description: |-
+                        Active indicates the collection is active in the sense that it's actively being used because an alias is pointing
+                        to it or blue/green not enabled
+                      type: boolean
+                    blueGreen:
+                      description: BlueGreen indicates whether this is a blue/green
+                        collection or not
+                      type: boolean
+                    configset:
+                      description: ConfigSet is the name of the config set the collection
+                        is configured with
+                      type: string
+                    exists:
+                      description: Exists indicates whether the collection has been
+                        created in the Solr cluster
+                      type: boolean
+                    instanceName:
+                      description: InstanceName is the name of this instance of the
+                        collection if blue/green is active or the same as Name if
+                        not.
+                      type: string
+                    name:
+                      description: Name is the specified name of the collection. This
+                        omits the blue/green suffix if blue/green is enabled
+                      type: string
+                    replicas:
+                      description: ReplicaCount is the number of replicas of the collection
+                      format: int32
+                      type: integer
+                    replicationFactor:
+                      description: ReplicationFactor is the actual replication factor
+                        of the collection (vs the specified replication factor on
+                        the set)
+                      format: int32
+                      type: integer
+                    replicationStatus:
+                      description: ReplicationStatus is a string representing the
+                        desired number of replicas vs the actual number ...
+                      type: string
+                  required:
+                  - active
+                  - blueGreen
+                  - configset
+                  - exists
+                  - instanceName
+                  - name
+                  - replicas
+                  - replicationFactor
+                  - replicationStatus
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - instanceName
+                x-kubernetes-list-type: map
+              conditions:
+                description: |-
+                  For Kubernetes API conventions, see:
+                  https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                  conditions represent the current state of the SolrCollectionSet resource.
+                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
+
+                  This collection should be treated as a map with a key of 'type'
+
+                  Standard condition types include:
+                  - "Available": the resource is fully functional
+                  - "Progressing": the resource is being created or updated
+                  - "Degraded": the resource failed to reach or maintain its desired state
+
+                  The status of each condition is one of True, False, or Unknown.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              readyRatio:
+                description: ReadyRatio is the ratio of specified collections to collections
+                  provisioned
+                type: string
+              replicationFactor:
+                description: |-
+                  ReplicationFactor is the replication factor of the collection set. (Currently it's assumed that all collections
+                  in a set have the same replication factor)
+                format: int32
+                type: integer
+            required:
+            - readyRatio
+            - replicationFactor
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

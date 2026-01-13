@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+    <!-- https://solr.apache.org/guide/8_8/configuring-solrconfig-xml.html#configuring-solrconfig-xml -->
+
+    <!-- Use manually managed schema.xml files -->
+    <schemaFactory class="ClassicIndexSchemaFactory"/>
+
+    <luceneMatchVersion>8.8.1</luceneMatchVersion>
+
+    <!-- Data Directory
+         Used to specify an alternate directory to hold all index data
+         other than the default ./data under the Solr home.  If
+         replication is in use, this should match the replication
+         configuration. -->
+    <dataDir>${solr.data.dir:}</dataDir>
+
+    <!-- The DirectoryFactory to use for indexes. -->
+    <directoryFactory name="DirectoryFactory" class="${solr.directoryFactory:solr.NRTCachingDirectoryFactory}"/>
+
+    <!-- The CodecFactory for defining the format of the inverted index. -->
+    <codecFactory class="solr.SchemaCodecFactory"/>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         Index Config - These settings control low-level behavior of indexing
+         Most example settings here show the default value, but are commented
+         out, to more easily see where customizations have been made.
+
+         Note: This replaces <indexDefaults> and <mainIndex> from older versions
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <indexConfig>
+        <lockType>${solr.lock.type:native}</lockType>
+    </indexConfig>
+
+    <!-- The default high-performance update handler -->
+    <updateHandler class="solr.DirectUpdateHandler2">
+        <updateLog>
+            <str name="dir">${solr.ulog.dir:}</str>
+            <int name="numVersionBuckets">${solr.ulog.numVersionBuckets:65536}</int>
+        </updateLog>
+
+        <!-- AutoCommit
+             Perform a hard commit automatically under certain conditions.
+             Instead of enabling autoCommit, consider using "commitWithin"
+             when adding documents.
+             http://wiki.apache.org/solr/UpdateXmlMessages
+          -->
+        <autoCommit>
+            <maxTime>${solr.autoCommit.maxTime:15000}</maxTime>
+            <openSearcher>false</openSearcher>
+        </autoCommit>
+
+        <!-- softAutoCommit is like autoCommit except it causes a
+             'soft' commit which only ensures that changes are visible
+             but does not ensure that data is synced to disk.  This is
+             faster and more near-realtime friendly than a hard commit.
+          -->
+        <autoSoftCommit>
+            <maxTime>${solr.autoSoftCommit.maxTime:-1}</maxTime>
+        </autoSoftCommit>
+    </updateHandler>
+
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         Query section - these settings control query time things like caches
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <query>
+
+        <!-- Maximum number of clauses allowed when parsing a boolean query string. -->
+        <maxBooleanClauses>${solr.max.booleanClauses:1024}</maxBooleanClauses>
+
+        <!-- Filter Cache  -->
+        <filterCache size="512"
+                     initialSize="512"
+                     autowarmCount="0"/>
+
+        <!-- Query Result Cache -->
+        <queryResultCache size="512"
+                          initialSize="512"
+                          autowarmCount="0"/>
+
+        <!-- Document Cache -->
+        <documentCache size="512"
+                       initialSize="512"
+                       autowarmCount="0"/>
+
+        <!-- custom cache currently used by block join -->
+        <cache name="perSegFilter"
+               size="10"
+               initialSize="0"
+               autowarmCount="10"
+               regenerator="solr.NoOpRegenerator"/>
+
+        <!-- Lazy Field Loading  -->
+        <enableLazyFieldLoading>true</enableLazyFieldLoading>
+
+        <!-- Result Window Size  -->
+        <queryResultWindowSize>20</queryResultWindowSize>
+
+        <!-- Maximum number of documents to cache for any entry in the queryResultCache. -->
+        <queryResultMaxDocsCached>200</queryResultMaxDocsCached>
+
+        <!-- QuerySenderListener takes an array of NamedList and executes a local query request for each NamedList in sequence. -->
+        <listener event="newSearcher" class="solr.QuerySenderListener">
+            <arr name="queries">
+                <!--
+                   <lst><str name="q">solr</str><str name="sort">price asc</str></lst>
+                   <lst><str name="q">rocks</str><str name="sort">weight asc</str></lst>
+                  -->
+            </arr>
+        </listener>
+        <listener event="firstSearcher" class="solr.QuerySenderListener">
+            <arr name="queries">
+                <!--
+                <lst>
+                  <str name="q">static firstSearcher warming in solrconfig.xml</str>
+                </lst>
+                -->
+            </arr>
+        </listener>
+
+        <!-- Use Cold Searcher
+             If a search request comes in and there is no current
+             registered searcher, then immediately register the still
+             warming searcher and use it.  If "false" then all requests
+             will block until the first searcher is done warming.
+          -->
+        <useColdSearcher>false</useColdSearcher>
+    </query>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       Circuit Breaker Section - This section consists of configurations for
+       circuit breakers
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+    <!-- Circuit Breakers -->
+    <circuitBreakers enabled="true" />
+
+    <!-- Request Dispatcher
+         This section contains instructions for how the SolrDispatchFilter
+         should behave when processing requests for this SolrCore.
+      -->
+    <requestDispatcher>
+        <!-- HTTP Caching
+             Set HTTP caching related parameters (for proxy caches and clients).
+
+             The options below instruct Solr not to output any HTTP Caching
+             related headers
+          -->
+        <httpCaching never304="true"/>
+    </requestDispatcher>
+
+    <!-- SearchHandler http://wiki.apache.org/solr/SearchHandler -->
+    <requestHandler name="/select" class="solr.SearchHandler">
+        <!-- default values for query parameters can be specified, these
+             will be overridden by parameters in the request
+          -->
+        <lst name="defaults">
+            <str name="echoParams">explicit</str>
+            <int name="rows">10</int>
+            <str name="q.op">OR</str>
+            <str name="df">code</str>
+        </lst>
+    </requestHandler>
+
+    <!-- A request handler that returns indented JSON by default -->
+    <requestHandler name="/query" class="solr.SearchHandler">
+        <lst name="defaults">
+            <str name="echoParams">explicit</str>
+            <str name="wt">json</str>
+            <str name="indent">true</str>
+        </lst>
+    </requestHandler>
+
+    <initParams path="/query,/select">
+        <lst name="defaults">
+            <str name="df">_text_</str>
+        </lst>
+    </initParams>
+</config>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="buildInfo" version="1.6">
+
+    <types>
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true"/>
+        <fieldType name="long" class="solr.TrieLongField" docValues="true" precisionStep="0" positionIncrementGap="0"/>
+    </types>
+
+    <fields>
+        <!-- If you remove this field, you must _also_ disable the update log in solrconfig.xml or Solr won't start. _version_
+             and update log are required for SolrCloud -->
+        <field name="_version_" type="long" indexed="true" stored="false" />
+        <field name="collection" type="string" indexed="true" stored="true"/>
+        <field name="checksum" type="string" indexed="true" stored="true"/>
+    </fields>
+
+    <uniqueKey>collection</uniqueKey>
+
+</schema>

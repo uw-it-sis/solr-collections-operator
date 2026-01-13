@@ -1,0 +1,2 @@
+[tools]
+kubebuilder = "4.10.1"

@@ -1,0 +1,9 @@
+apiVersion: solrcollections.solr.sis.uw.edu/v1
+kind: SolrCollectionSet
+metadata:
+  labels:
+    app.kubernetes.io/name: solr-collections-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: solrcollectionset-sample
+spec:
+  # TODO(user): Add fields here

@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- solrcollections_v1_solrcollectionset.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
