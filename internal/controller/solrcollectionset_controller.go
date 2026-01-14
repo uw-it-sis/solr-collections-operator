@@ -617,12 +617,12 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 		var diff = adjustment.TargetCount - adjustment.CurrentCount
 		if diff > 0 {
 			isScaling, err := solrClient.AddReplicas(collection, diff)
-			if err != nil {
-				return false, err
-			}
 			if isScaling {
-				// Don't error if scaling is happening ...
 				return true, nil
+			} else {
+				if err != nil {
+					return false, err
+				}
 			}
 		} else {
 			err := solrClient.RemoveReplicas(collection, abs(diff))
