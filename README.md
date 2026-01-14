@@ -24,9 +24,10 @@ NOTES:
   * kubebuilder init --domain example.com --repo github.com/your-username/my-operator
   * kubebuilder create api --group mygroup --version v1 --kind MyResource
   * The docs for kubebuilder are here ... https://book.kubebuilder.io/
-* The project uses a Makefile for various things 
+* The project uses a Makefile for various things
   * 
 * The operator can run locally. It will read your current kubectl config to talk to a cluster. SO BE CAREFUL.
+  * You'll need a tunnel to the solr cluster and that'll require a localhost address in the CRD
 * If you update the CRD defs they have to deployed to the cluster like ...
   * make manifests
   * kubectl apply -f config/crd/bases/solrcollections.solr.sis.uw.edu_solrcollectionsets.yaml

@@ -10,6 +10,7 @@ import (
 	"iter"
 	"maps"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -319,8 +320,13 @@ func (r *SolrCollectionSetReconciler) UpdateStatus(
 		}
 	}
 
+	// Sort the collections otherwise DeepEqual won't consider the collections equal ...
+	sort.Slice(newStatusObject.SolrCollections, func(i, j int) bool {
+		return newStatusObject.SolrCollections[i].InstanceName < newStatusObject.SolrCollections[j].InstanceName
+	})
+
 	// If the new status object and the old status object differ, then apply the changes. Note that patching the
-	// collection set will cause the
+	// collection set will cause the reconcile to be requeued.
 	if !reflect.DeepEqual(collectionSet.Status, newStatusObject) {
 		oldInstance := collectionSet.DeepCopy()
 		collectionSet.Status = newStatusObject
@@ -659,7 +665,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 	for _, cm := range configMapList.Items {
 		var name, exists = cm.ObjectMeta.Labels["collection"]
 		if !exists {
-			return fmt.Errorf("config set configmap %s has no 'collection' label", cm.Name)
+			return fmt.Errorf("config set configmap [%s] has no 'collection' label", cm.Name)
 		}
 		configMaps[name] = cm
 	}
