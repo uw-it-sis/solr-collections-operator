@@ -421,6 +421,8 @@ func populateCollectionSetStatus(
 		}
 	}
 
+	// This is the word that goes into the scaling status slot on the status object ...
+	scalingStatus := "Stable"
 	// Iterate through the solr collections from the cluster and update the collection status objects ...
 	for name, collection := range clusterStatus.Collections {
 		// Only count specified collections (collections that the operator itself uses begin with '_') ...
@@ -456,11 +458,14 @@ func populateCollectionSetStatus(
 		if collection.ReplicaCount != collection.ReplicationFactor {
 			isStable = false
 			if collection.ReplicaCount < collection.ReplicationFactor {
+				scalingStatus = reasonSolrCollectionSetScalingOut
 				unstableReason = reasonSolrCollectionSetScalingOut
 				events[eventSolrCollectionSetScaleOut] =
 					fmt.Sprintf("SolrCollectionSpec [%s] is in namespace [%s] is scaling out from [%d] replicas to [%d]",
 						collectionSet.Name, collectionSet.Namespace, collection.ReplicaCount, collection.ReplicationFactor)
-			} else if collection.ReplicaCount > collection.ReplicationFactor {
+			}
+			if collection.ReplicaCount > collection.ReplicationFactor {
+				scalingStatus = reasonSolrCollectionSetScalingIn
 				unstableReason = reasonSolrCollectionSetScalingIn
 				events[eventSolrCollectionSetScaleIn] =
 					fmt.Sprintf("SolrCollectionSpec [%s] is in namespace [%s] is scaling in from [%d] replicas to [%d]",
@@ -479,6 +484,9 @@ func populateCollectionSetStatus(
 		solrCollectionStatus.Active = isActive
 		solrCollectionStatus.Exists = true
 	}
+
+	// Set the scaling status (now that the scaling status is known) ...
+	newStatus.ScaleStatus = scalingStatus
 
 	// Write the collection status object into the status object ...
 	newStatus.SolrCollections = []solrCollectionSet.SolrCollectionStatus{}

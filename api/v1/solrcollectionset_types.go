@@ -113,10 +113,7 @@ type SolrCollectionSetStatus struct {
 	//
 	// This collection should be treated as a map with a key of 'type'
 	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
+	// This operator has only one condition: Stable (ie is the collection set stable?)
 	//
 	// The status of each condition is one of True, False, or Unknown.
 	// +listType=map
@@ -130,6 +127,9 @@ type SolrCollectionSetStatus struct {
 
 	// ReadyRatio is the ratio of specified collections to collections provisioned
 	ReadyRatio string `json:"readyRatio"`
+
+	// ScaleStatus is the overall scaling status of the collection set. V
+	ScaleStatus string `json:"scaleStatus"`
 
 	// SolrNodes contain the statuses of each solr node running in this solr cloud.
 	// +optional
@@ -219,9 +219,10 @@ func (sc SolrCollectionSet) SetCollectionDefaults(logger logr.Logger) (changed b
 // +kubebuilder:categories=all
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="CLUSTER",type="string",JSONPath=".spec.clusterName",description="The name of the Solr cluster"
-// +kubebuilder:printcolumn:name="ACTIVE",type="bool",JSONPath=".spec.Active",description="Is the cluster being actively managed"
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.readyRatio",description="The ratio of defined vs provisioned collections in the set"
-// +kubebuilder:printcolumn:name="RFACTOR",type="integer",JSONPath=".spec.replicationFactor",description="The replication factor of the collection set"
+// +kubebuilder:printcolumn:name="ACTIVE",type="boolean",JSONPath=".spec.active",description="Is the cluster being actively managed"
+// +kubebuilder:printcolumn:name="SCALEING",type="string",JSONPath=".status.scaleStatus",description="The overall scaling status of the collection set."
+// +kubebuilder:printcolumn:name="COLS",type="string",JSONPath=".status.readyRatio",description="The ratio of defined vs provisioned collections in the set"
+// +kubebuilder:printcolumn:name="R-FAC",type="integer",JSONPath=".spec.replicationFactor",description="The replication factor of the collection set"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 //
 // SolrCollectionSet is the Schema for the solrcollectionsets API
