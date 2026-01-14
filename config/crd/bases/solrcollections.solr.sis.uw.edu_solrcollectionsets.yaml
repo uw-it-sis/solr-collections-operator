@@ -21,6 +21,10 @@ spec:
       jsonPath: .spec.clusterName
       name: CLUSTER
       type: string
+    - description: Is the cluster being actively managed
+      jsonPath: .spec.Active
+      name: ACTIVE
+      type: bool
     - description: The ratio of defined vs provisioned collections in the set
       jsonPath: .status.readyRatio
       name: READY

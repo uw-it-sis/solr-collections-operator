@@ -362,7 +362,7 @@ func populateCollectionSetStatus(
 
 	// Look at the overall status of the collections ...
 	specifiedCollectionCount := countSpecifiedCollections(collectionSet.Spec.Collections, *collectionSet.Spec.BlueGreenEnabled)
-	solrCollectionsCount := countSolrCollections(clusterStatus.Collections)
+	solrCollectionsCount := countSolrCollections(clusterStatus.Collections, collectionSet.Spec.Collections, *collectionSet.Spec.BlueGreenEnabled)
 
 	if specifiedCollectionCount != solrCollectionsCount {
 		isStable = false
@@ -397,7 +397,8 @@ func populateCollectionSetStatus(
 		collectionsToAliasesMap[collection] = alias
 	}
 
-	// Create a SolrSectionStatus object for each specified collectionSpec which only has data from the spec  ...
+	// Create a SolrSectionStatus object for each specified collectionSpec with only basic data populated. The rest
+	// will get filled in below (if there's data for the collection available in Solr) ...
 	var collectionStatusMap = make(map[string]*solrCollectionSet.SolrCollectionStatus)
 	for _, collectionSpec := range collectionSet.Spec.Collections {
 		collectionName := collectionSpec.Name
@@ -506,15 +507,6 @@ func populateCollectionSetStatus(
 		Status:  stableStatus,
 		Reason:  unstableReason,
 		Message: stableMessage,
-	}
-
-	// Carrying forward conditions which do not exist in the new conditions map. At this point I believe this is mainly
-	// just a precaution.
-	for t, _ := range existingConditions {
-		_, exists := newConditions[t]
-		if !exists {
-			meta.SetStatusCondition(&newStatus.Conditions, existingConditions[t])
-		}
 	}
 
 	// Iterate though the condition that were just formulated and apply the to the status ...
@@ -660,7 +652,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 		LabelSelector: selector,
 	}
 	if err := r.List(ctx, configMapList, listOps); err != nil {
-		return fmt.Errorf("error listing config maps", err)
+		return err
 	}
 	// Map the configmaps that came from Kubernetes by the collection name label ...
 	configMaps := map[string]corev1.ConfigMap{}
@@ -1055,12 +1047,29 @@ func contains(list []string, target string) bool {
 }
 
 // countSolrCollections counts up the number of collections in the given map MINUS the unmanaged ones ...
-func countSolrCollections(collections map[string]solr.Collection) (count int) {
+func countSolrCollections(collections map[string]solr.Collection, specCollections []solrCollectionSet.SolrCollection, isBlueGreenEnabled bool) (count int) {
+
+	// Make a list of the specified collections ...
+	var specCollectionList []string
+	for _, collection := range specCollections {
+		specCollectionList = append(specCollectionList, collection.Name)
+	}
+
 	for _, collection := range collections {
 		// Don't count collections that begin with _ ...
 		if !strings.HasPrefix(collection.Name, "_") {
-			count++
+			var collectionName = collection.Name
+			if isBlueGreenEnabled {
+				// Strip the b/g suffix if b/g is enabled ...
+				collectionName = strings.TrimSuffix(collectionName, "_blue")
+				collectionName = strings.TrimSuffix(collectionName, "_green")
+			}
+			exists := contains(specCollectionList, collectionName)
+			if exists {
+				count++
+			}
 		}
+
 	}
 	return count
 }

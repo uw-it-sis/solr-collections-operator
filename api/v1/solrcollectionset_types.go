@@ -213,19 +213,13 @@ func (sc SolrCollectionSet) SetCollectionDefaults(logger logr.Logger) (changed b
 }
 
 // +kubebuilder:object:root=true
-// SolrCollectionList contains a list of SolrCollection
-type SolrCollectionList struct {
-	Items []SolrCollection `json:"collections"`
-}
-
-// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:resource:shortName=collections
 // +kubebuilder:categories=all
 // +kubebuilder:subresource:status
-
 // +kubebuilder:printcolumn:name="CLUSTER",type="string",JSONPath=".spec.clusterName",description="The name of the Solr cluster"
+// +kubebuilder:printcolumn:name="ACTIVE",type="bool",JSONPath=".spec.Active",description="Is the cluster being actively managed"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.readyRatio",description="The ratio of defined vs provisioned collections in the set"
 // +kubebuilder:printcolumn:name="RFACTOR",type="integer",JSONPath=".spec.replicationFactor",description="The replication factor of the collection set"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"

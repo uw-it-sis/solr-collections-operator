@@ -224,7 +224,7 @@ func (r *SolrClient) SetReplicationFactor(collectionName string, replicationFact
 	}
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
-		return fmt.Errorf("set replication factor failed on collection [%s] with [%s] [%msg]",
+		return fmt.Errorf("set replication factor failed on collection [%s] with [%s] [%s]",
 			collectionName, resp.Status, msg)
 	}
 
