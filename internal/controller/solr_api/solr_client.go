@@ -41,10 +41,11 @@ func (r *SolrClient) GetClusterStatus(ctx context.Context) (ClusterStatus, error
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return ClusterStatus{}, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return ClusterStatus{}, fmt.Errorf("could not get cluster status [%s] [%s]", resp.Status, msg)
@@ -117,10 +118,11 @@ func (r *SolrClient) GetConfigSets() ([]string, error) {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return nil, fmt.Errorf("could not get configsets [%s] [%s]", resp.Status, msg)
@@ -166,10 +168,10 @@ func (r *SolrClient) UploadConfigSet(configSetName string, body []byte) error {
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("create config set %s failed with [%s] [%s]", configSetName, resp.Status, msg)
@@ -192,10 +194,11 @@ func (r *SolrClient) DeleteConfigSet(configSetName string) error {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("delete config set %s failed with [%s] [%s]", configSetName, resp.Status, msg)
@@ -218,10 +221,11 @@ func (r *SolrClient) SetReplicationFactor(collectionName string, replicationFact
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("set replication factor failed on collection [%s] with [%s] [%s]",
@@ -246,10 +250,10 @@ func (r *SolrClient) AddReplicas(collectionName string, increaseCount int32) (is
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return false, fmt.Errorf("request failed")
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -290,10 +294,10 @@ func (r *SolrClient) RemoveReplicas(collectionName string, decreaseCount int32) 
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -318,10 +322,10 @@ func (r *SolrClient) CreateCollection(collectionName string, configSetName strin
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -346,10 +350,10 @@ func (r *SolrClient) AssignAlias(alias string, collectionName string) error {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("create alias [%s] for collection [%s] failed with [%s] [%s]",
@@ -373,10 +377,10 @@ func (r *SolrClient) DeleteAlias(alias string) error {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("remove alias [%s] failed [%s] [%s]", alias, resp.Status, msg)
@@ -399,10 +403,10 @@ func (r *SolrClient) ReloadCollection(collectionName string) error {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("relocal collection %s failed with [%s] [%s]", collectionName, resp.Status, msg)
@@ -425,10 +429,10 @@ func (r *SolrClient) DeleteCollection(collectionName string) error {
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("delete collection [%s] failed with [%s] [%s]", collectionName, resp.Status, msg)
@@ -450,11 +454,11 @@ func (r *SolrClient) Query(collectionName string, query string) ([]map[string]in
 	r.addBasicAuth(req)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 
+	defer resp.Body.Close()
 	// If the response wasn't a 200 then fish out the error ...
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -504,10 +508,10 @@ func (r *SolrClient) WriteRecord(collectionName string, record string) error {
 
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	// If the response isn't 200 then parse the response for the error message ...
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
