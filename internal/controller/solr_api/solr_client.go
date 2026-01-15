@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"k8s.io/apimachinery/pkg/util/json"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // SolrClient is a basic auth client for the Solr API.
@@ -27,7 +28,7 @@ type ReplicationAdjustment struct {
 }
 
 func (r *SolrClient) GetClusterStatus(ctx context.Context) (ClusterStatus, error) {
-	//logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	client := &http.Client{}
 
@@ -44,7 +45,12 @@ func (r *SolrClient) GetClusterStatus(ctx context.Context) (ClusterStatus, error
 	if err != nil {
 		return ClusterStatus{}, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -105,7 +111,9 @@ func (r *SolrClient) GetClusterStatus(ctx context.Context) (ClusterStatus, error
 }
 
 // Gets the config sets that are present in Solr.
-func (r *SolrClient) GetConfigSets() ([]string, error) {
+func (r *SolrClient) GetConfigSets(ctx context.Context) ([]string, error) {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/admin/configs?action=LIST&wt=json", r.Url)
@@ -121,7 +129,12 @@ func (r *SolrClient) GetConfigSets() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -142,7 +155,7 @@ func (r *SolrClient) GetConfigSets() ([]string, error) {
 
 	var configSetsJson = jsonResponse["configSets"]
 	// Get the list of existing config sets ...
-	var configSets []string
+	var configSets []string //nolint:prealloc
 	for _, value := range configSetsJson.([]interface{}) {
 		configSets = append(configSets, value.(string))
 	}
@@ -151,7 +164,9 @@ func (r *SolrClient) GetConfigSets() ([]string, error) {
 }
 
 // UploadConfigSet creates a configset
-func (r *SolrClient) UploadConfigSet(configSetName string, body []byte) error {
+func (r *SolrClient) UploadConfigSet(ctx context.Context, configSetName string, body []byte) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	// https://solr.apache.org/guide/solr/latest/configuration-guide/configsets-api.html
@@ -171,7 +186,14 @@ func (r *SolrClient) UploadConfigSet(configSetName string, body []byte) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("create config set %s failed with [%s] [%s]", configSetName, resp.Status, msg)
@@ -181,7 +203,9 @@ func (r *SolrClient) UploadConfigSet(configSetName string, body []byte) error {
 }
 
 // DeleteConfigSet deletes the given config set from Solr ...
-func (r *SolrClient) DeleteConfigSet(configSetName string) error {
+func (r *SolrClient) DeleteConfigSet(ctx context.Context, configSetName string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/admin/configs?action=DELETE&name=%s&wt=json", r.Url, configSetName)
@@ -197,7 +221,13 @@ func (r *SolrClient) DeleteConfigSet(configSetName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -208,7 +238,9 @@ func (r *SolrClient) DeleteConfigSet(configSetName string) error {
 }
 
 // SetReplicationFactor adjusts the replication factor of a collection to the given value ...
-func (r *SolrClient) SetReplicationFactor(collectionName string, replicationFactor int32) error {
+func (r *SolrClient) SetReplicationFactor(ctx context.Context, collectionName string, replicationFactor int32) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 	url := fmt.Sprintf("%s/admin/collections?action=MODIFYCOLLECTION&collection=%s&replicationFactor=%d&wt=json",
 		r.Url, collectionName, replicationFactor)
@@ -224,7 +256,12 @@ func (r *SolrClient) SetReplicationFactor(collectionName string, replicationFact
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -236,7 +273,9 @@ func (r *SolrClient) SetReplicationFactor(collectionName string, replicationFact
 }
 
 // AddReplicas adds the given number of replicas
-func (r *SolrClient) AddReplicas(collectionName string, increaseCount int32) (isScaling bool, error error) {
+func (r *SolrClient) AddReplicas(ctx context.Context, collectionName string, increaseCount int32) (isScaling bool, error error) {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/admin/collections?action=ADDREPLICA&collection=%s&shard=shard1&nrtReplicas=%d&wt=json",
@@ -253,7 +292,12 @@ func (r *SolrClient) AddReplicas(collectionName string, increaseCount int32) (is
 	if err != nil {
 		return false, fmt.Errorf("request failed")
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -279,7 +323,9 @@ func (r *SolrClient) AddReplicas(collectionName string, increaseCount int32) (is
 }
 
 // RemoveReplicas removes the given number of replicas
-func (r *SolrClient) RemoveReplicas(collectionName string, decreaseCount int32) error {
+func (r *SolrClient) RemoveReplicas(ctx context.Context, collectionName string, decreaseCount int32) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 	// Multiple replicas can be deleted from a specific shard if the associated collection and shard names are provided,
 	// along with a count of the replicas to delete.
@@ -297,7 +343,13 @@ func (r *SolrClient) RemoveReplicas(collectionName string, decreaseCount int32) 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -308,8 +360,11 @@ func (r *SolrClient) RemoveReplicas(collectionName string, decreaseCount int32) 
 }
 
 // CreateCollection creates a collection ...
-func (r *SolrClient) CreateCollection(collectionName string, configSetName string, replicationFactor int32) error {
+func (r *SolrClient) CreateCollection(ctx context.Context, collectionName string, configSetName string, replicationFactor int32) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
+
 	// http://localhost:8983/solr/admin/collections?action=CREATE&name=techproducts_v2&collection.configName=techproducts&numShards=1
 	url := fmt.Sprintf("%s/admin/collections?action=CREATE&name=%s&collection.configName=%s&numShards=1&replicationFactor=%d&autoAddReplicas=true&wt=json",
 		r.Url, collectionName, configSetName, replicationFactor)
@@ -325,7 +380,12 @@ func (r *SolrClient) CreateCollection(collectionName string, configSetName strin
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -336,8 +396,11 @@ func (r *SolrClient) CreateCollection(collectionName string, configSetName strin
 }
 
 // AssignAlias creates an alias for the given collection ...
-func (r *SolrClient) AssignAlias(alias string, collectionName string) error {
+func (r *SolrClient) AssignAlias(ctx context.Context, alias string, collectionName string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
+
 	// /admin/collections?action=CREATEALIAS&name=name&collections=collectionlist
 	url := fmt.Sprintf("%s/admin/collections?action=CREATEALIAS&name=%s&collections=%s",
 		r.Url, alias, collectionName)
@@ -353,7 +416,13 @@ func (r *SolrClient) AssignAlias(alias string, collectionName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("create alias [%s] for collection [%s] failed with [%s] [%s]",
@@ -364,8 +433,11 @@ func (r *SolrClient) AssignAlias(alias string, collectionName string) error {
 }
 
 // DeleteAlias removes the given alias ...
-func (r *SolrClient) DeleteAlias(alias string) error {
+func (r *SolrClient) DeleteAlias(ctx context.Context, alias string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
+
 	// http://localhost:8983/solr/admin/collections?action=DELETEALIAS&name=testalias
 	url := fmt.Sprintf("%s/admin/collections?action=DELETEALIAS&name=%s", r.Url, alias)
 
@@ -380,7 +452,14 @@ func (r *SolrClient) DeleteAlias(alias string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
+
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("remove alias [%s] failed [%s] [%s]", alias, resp.Status, msg)
@@ -390,7 +469,9 @@ func (r *SolrClient) DeleteAlias(alias string) error {
 }
 
 // ReloadCollection causes a Solr collection to be reloaded
-func (r *SolrClient) ReloadCollection(collectionName string) error {
+func (r *SolrClient) ReloadCollection(ctx context.Context, collectionName string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/admin/collections?action=RELOAD&name=%s", r.Url, collectionName)
@@ -406,7 +487,12 @@ func (r *SolrClient) ReloadCollection(collectionName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("relocal collection %s failed with [%s] [%s]", collectionName, resp.Status, msg)
@@ -416,7 +502,9 @@ func (r *SolrClient) ReloadCollection(collectionName string) error {
 }
 
 // DeleteCollection deletes the given collection from Solr ...
-func (r *SolrClient) DeleteCollection(collectionName string) error {
+func (r *SolrClient) DeleteCollection(ctx context.Context, collectionName string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/admin/collections?action=DELETE&name=%s", r.Url, collectionName)
@@ -432,7 +520,12 @@ func (r *SolrClient) DeleteCollection(collectionName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
 		return fmt.Errorf("delete collection [%s] failed with [%s] [%s]", collectionName, resp.Status, msg)
@@ -442,7 +535,9 @@ func (r *SolrClient) DeleteCollection(collectionName string) error {
 }
 
 // Query performs a query against the given collection and returns the results in a list of map[string]interface{}
-func (r *SolrClient) Query(collectionName string, query string) ([]map[string]interface{}, error) {
+func (r *SolrClient) Query(ctx context.Context, collectionName string, query string) ([]map[string]interface{}, error) {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/%s/select?q.op=OR&rows=1000&q=%s", r.Url, collectionName, query)
@@ -458,7 +553,13 @@ func (r *SolrClient) Query(collectionName string, query string) ([]map[string]in
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
+
 	// If the response wasn't a 200 then fish out the error ...
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)
@@ -480,7 +581,7 @@ func (r *SolrClient) Query(collectionName string, query string) ([]map[string]in
 	var response = jsonResponse["response"]
 	var docs = response.(map[string]interface{})["docs"]
 
-	var docsOut []map[string]interface{}
+	var docsOut []map[string]interface{} //nolint:prealloc
 	for _, doc := range docs.([]interface{}) {
 		var rec = make(map[string]interface{})
 		for key, value := range doc.(map[string]interface{}) {
@@ -493,7 +594,9 @@ func (r *SolrClient) Query(collectionName string, query string) ([]map[string]in
 }
 
 // WriteRecord writes a single solr record to the given collection ...
-func (r *SolrClient) WriteRecord(collectionName string, record string) error {
+func (r *SolrClient) WriteRecord(ctx context.Context, collectionName string, record string) error {
+	logger := log.FromContext(ctx)
+
 	client := &http.Client{}
 
 	url := fmt.Sprintf("%s/%s/update?commit=true", r.Url, collectionName)
@@ -511,7 +614,13 @@ func (r *SolrClient) WriteRecord(collectionName string, record string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(err, "Solr call failed")
+		}
+	}(resp.Body)
+
 	// If the response isn't 200 then parse the response for the error message ...
 	if resp.StatusCode != 200 {
 		msg, _ := parseError(resp.Body)

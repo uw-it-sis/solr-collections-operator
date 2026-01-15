@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package v1
 
 import (
@@ -71,8 +70,8 @@ type SolrCollectionSetSpec struct {
 	CleanupEnabled *bool `json:"cleanupEnabled"`
 
 	// Collections The collections that will be managed.
-	//+listType:=map
-	//+listMapKey:=name
+	// +listType:=map
+	// +listMapKey:=name
 	Collections []SolrCollection `json:"collections"`
 }
 
@@ -133,8 +132,8 @@ type SolrCollectionSetStatus struct {
 
 	// SolrNodes contain the statuses of each solr node running in this solr cloud.
 	// +optional
-	//+listType:=map
-	//+listMapKey:=instanceName
+	// +listType:=map
+	// +listMapKey:=instanceName
 	SolrCollections []SolrCollectionStatus `json:"collections"`
 }
 
@@ -163,12 +162,12 @@ type SolrCollectionStatus struct {
 
 // WithDefaults set default values when not defined in the spec.
 func (sc *SolrCollectionSet) WithDefaults(logger logr.Logger) bool {
-	var changedDefaults = sc.Spec.withDefaults(logger)
+	var changedDefaults = sc.Spec.withDefaults()
 	var changedCollections = sc.SetCollectionDefaults(logger)
 	return changedDefaults || changedCollections
 }
 
-func (spec *SolrCollectionSetSpec) withDefaults(logger logr.Logger) (changed bool) {
+func (spec *SolrCollectionSetSpec) withDefaults() (changed bool) {
 	if spec.Active == nil {
 		changed = true
 		r := DefaultSolrCollectionSetActive

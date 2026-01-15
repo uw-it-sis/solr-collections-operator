@@ -35,9 +35,6 @@ import (
 	solrCollectionSet "github.com/uw-it-sis/solr-collections-operator/api/v1"
 )
 
-// To embed files into the binary. (In this case the schema files for the config set checksums)
-import _ "embed"
-
 // SolrCollectionSet condition and event types/reasons ...
 const (
 	// Conditions ...
@@ -284,7 +281,7 @@ func (r *SolrCollectionSetReconciler) InitializeSolrCluster(ctx context.Context,
 		// helpful to throw multiples of this event ...
 		isInitializing = true
 		logger.Info(fmt.Sprintf("Creating collection [%s] for checksums", configChecksumsCollectionNameTemplate))
-		err := createChecksumCollection(checksumsCollectionName, *collectionSet.Spec.ReplicationFactor)
+		err := createChecksumCollection(ctx, checksumsCollectionName, *collectionSet.Spec.ReplicationFactor)
 		if err != nil {
 			logger.Error(err, "failed create checksum collection")
 			return solr.ClusterStatus{}, isInitializing, err
@@ -309,10 +306,7 @@ func (r *SolrCollectionSetReconciler) UpdateStatus(
 
 	// Create storage for the new/empty status for the collection set  ...
 	newStatusObject := solrCollectionSet.SolrCollectionSetStatus{}
-	events, err := populateCollectionSetStatus(&newStatusObject, collectionSet, clusterStatus, logger)
-	if err != nil {
-		return err
-	}
+	events := populateCollectionSetStatus(&newStatusObject, collectionSet, clusterStatus, logger)
 	// Emit events if there are any ...
 	if len(events) != 0 {
 		for eventType, reason := range events {
@@ -330,7 +324,7 @@ func (r *SolrCollectionSetReconciler) UpdateStatus(
 	if !reflect.DeepEqual(collectionSet.Status, newStatusObject) {
 		oldInstance := collectionSet.DeepCopy()
 		collectionSet.Status = newStatusObject
-		err = r.Status().Patch(ctx, collectionSet, client.MergeFrom(oldInstance))
+		err := r.Status().Patch(ctx, collectionSet, client.MergeFrom(oldInstance))
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("failed to save collection set status [%s]", collectionSet.Name))
 			return err
@@ -351,7 +345,7 @@ func populateCollectionSetStatus(
 	newStatus *solrCollectionSet.SolrCollectionSetStatus,
 	collectionSet *solrCollectionSet.SolrCollectionSet,
 	clusterStatus solr.ClusterStatus,
-	logger logr.Logger) (events map[string]string, err error) {
+	logger logr.Logger) (events map[string]string) {
 
 	// Storage for events to be returned ...
 	events = make(map[string]string)
@@ -434,8 +428,8 @@ func populateCollectionSetStatus(
 		if *collectionSet.Spec.BlueGreenEnabled {
 			// Strip the suffix off to learn the collectionSpec name (i.e. the name specified in the spec) ...
 			var collectionName = name
-			collectionName = strings.TrimSuffix(name, "_blue")
-			collectionName = strings.TrimSuffix(name, "_green")
+			collectionName = strings.TrimSuffix(collectionName, "_blue")
+			collectionName = strings.TrimSuffix(collectionName, "_green")
 			// See if there's an alias pointing to the collectionSpec ...
 			_, exists := collectionsToAliasesMap[collectionName]
 			if !exists {
@@ -548,12 +542,12 @@ func populateCollectionSetStatus(
 		}
 	}
 
-	return events, nil
+	return events
 }
 
 // newSolrSectionStatus creates and instance of SolrCollectionStatus only data from the spec ...
 func newSolrSectionStatus(collectionSpec solrCollectionSet.SolrCollection, instanceName string) solrCollectionSet.SolrCollectionStatus {
-	isBlueGreen := false
+	var isBlueGreen bool
 	// If no instance name is given then assume blue/green
 	if instanceName != "" {
 		isBlueGreen = true
@@ -593,9 +587,9 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 	var specCollectionsMap = make(map[string]solrCollectionSet.SolrCollection)
 	mapCollections(collectionSet.Spec.Collections, specCollectionsMap, *collectionSet.Spec.BlueGreenEnabled)
 
-	// Iterate the collections defined in the Kube spec and determine what updates need to be made to the replica counts ...
+	// Iterate the collections defined in the Kube spec and determine what updates need to be made to the replica counts
 	var adjustReplicas = make(map[string]solr.ReplicationAdjustment)
-	for collectionName, _ := range specCollectionsMap {
+	for collectionName := range specCollectionsMap {
 		collection, exists := solrCollections[collectionName]
 		if !exists {
 			logger.Error(fmt.Errorf("couldn't find collection [%s]", collectionName), "")
@@ -615,7 +609,7 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 	for collection, adjustment := range adjustReplicas {
 		var diff = adjustment.TargetCount - adjustment.CurrentCount
 		if diff > 0 {
-			isScaling, err := solrClient.AddReplicas(collection, diff)
+			isScaling, err := solrClient.AddReplicas(ctx, collection, diff)
 			if isScaling {
 				return true, nil
 			} else {
@@ -624,7 +618,7 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 				}
 			}
 		} else {
-			err := solrClient.RemoveReplicas(collection, abs(diff))
+			err := solrClient.RemoveReplicas(ctx, collection, abs(diff))
 			if err != nil {
 				return false, err
 			}
@@ -658,7 +652,7 @@ func queueReplicaAdjustment(collection solr.Collection, collectionSetReplication
 }
 
 // ManageConfigSets manages Solr schema config sets ....
-func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solrCollectionSet solrCollectionSet.SolrCollectionSet,
+func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, collectionSet solrCollectionSet.SolrCollectionSet,
 	checksumCollectionName string) error {
 
 	logger := log.FromContext(ctx)
@@ -666,7 +660,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 	logger.Info("checking config sets")
 
 	// Get the config sets from the Solr cluster ...
-	var solrConfigSets, err = solrClient.GetConfigSets()
+	var solrConfigSets, err = solrClient.GetConfigSets(ctx)
 	if err != nil {
 		return err
 	}
@@ -674,10 +668,10 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 	configMapList := &corev1.ConfigMapList{}
 	// label selection criteria ...
 	selectorLabels := make(map[string]string)
-	selectorLabels["collectionSet"] = solrCollectionSet.Name
+	selectorLabels["collectionSet"] = collectionSet.Name
 	selector := labels.SelectorFromSet(selectorLabels)
 	listOps := &client.ListOptions{
-		Namespace:     solrCollectionSet.Namespace,
+		Namespace:     collectionSet.Namespace,
 		LabelSelector: selector,
 	}
 	if err := r.List(ctx, configMapList, listOps); err != nil {
@@ -686,7 +680,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 	// Map the configmaps that came from Kubernetes by the collection name label ...
 	configMaps := map[string]corev1.ConfigMap{}
 	for _, cm := range configMapList.Items {
-		var name, exists = cm.ObjectMeta.Labels["collection"]
+		var name, exists = cm.Labels["collection"]
 		if !exists {
 			return fmt.Errorf("config set configmap [%s] has no 'collection' label", cm.Name)
 		}
@@ -696,14 +690,14 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 	// Grab the config set checksums from Solr to determine whether they have changed.
 	// If this is the early in the management process then there may not be any in Solr as they get created when the
 	// config set is created (obviously?)...
-	checksumsResponse, err := solrClient.Query(checksumCollectionName, "*:*")
+	checksumsResponse, err := solrClient.Query(ctx, checksumCollectionName, "*:*")
 	if err != nil {
 		return err
 	}
 	var configSetChecksums = make(map[string]string)
-	for _, record := range checksumsResponse {
-		var collection = record["collection"]
-		var checksum = record["checksum"]
+	for _, rec := range checksumsResponse {
+		var collection = rec["collection"]
+		var checksum = rec["checksum"]
 		configSetChecksums[collection.(string)] = checksum.(string)
 	}
 
@@ -741,7 +735,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 
 	// If cleanup is enabled iterate through the Solr config sets and flag the ones for delete which aren't in the spec
 	// (except the ones that are defined outside the Kubernetes spec i.e. are prefixed with "_")
-	if *solrCollectionSet.Spec.CleanupEnabled {
+	if *collectionSet.Spec.CleanupEnabled {
 		for _, name := range solrConfigSets {
 			_, exists := configMaps[name]
 			if !exists && !strings.HasPrefix(name, "_") {
@@ -757,16 +751,16 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 		if err != nil {
 			return fmt.Errorf("could not base64 decode 'configset' property on configmap %s for collection %s", configMap.Name, collection)
 		}
-		err = solrClient.UploadConfigSet(collection, configsetDecoded)
+		err = solrClient.UploadConfigSet(ctx, collection, configsetDecoded)
 		if err != nil {
 			return fmt.Errorf("could not upload configset %s", collection)
 		}
 		// Write the checksum to Solr ...
-		var record = fmt.Sprintf(`{
+		var rec = fmt.Sprintf(`{
 			"collection": "%s",
 			"checksum": "%s"
 		}`, collection, checksum(configsetEncoded))
-		err = solrClient.WriteRecord(checksumCollectionName, record)
+		err = solrClient.WriteRecord(ctx, checksumCollectionName, rec)
 		if err != nil {
 			return fmt.Errorf("could not write checksum to %s for collection %s", checksumCollectionName, collection)
 		}
@@ -774,7 +768,7 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, solr
 
 	// Process removes ...
 	for name := range configMapsToRemove {
-		err := solrClient.DeleteConfigSet(name)
+		err := solrClient.DeleteConfigSet(ctx, name)
 		if err != nil {
 			return fmt.Errorf("could not clean up config set [%s]", name)
 		}
@@ -827,7 +821,7 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 	// If cleanup is enabled, iterate though the solrCollections collections and see if they are still specified.
 	// If not add to the "delete" map assuming clean up is enabled
 	if *isCleanupEnabled {
-		for collectionName, _ := range solrCollections {
+		for collectionName := range solrCollections {
 			// if the collection is no longer in the spec then queue for removal (as long as it isn't prefixed with "_") ...
 			spec, exists := specCollectionsMap[collectionName]
 			if !exists && !strings.HasPrefix(collectionName, "_") {
@@ -860,7 +854,7 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 	if len(createCollectionsMap) > 0 {
 		logger.Info("creating collections", "collections", seqToString(maps.Keys(createCollectionsMap)))
 		for collectionName, collectionSpec := range createCollectionsMap {
-			err := solrClient.CreateCollection(collectionName, collectionSpec.ConfigsetName, *collectionSet.Spec.ReplicationFactor)
+			err := solrClient.CreateCollection(ctx, collectionName, collectionSpec.ConfigsetName, *collectionSet.Spec.ReplicationFactor)
 			if err != nil {
 				logger.Error(err, "create collection failed")
 			}
@@ -868,7 +862,7 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 			if *isBlueGreenEnabled {
 				_, exists := aliases[collectionSpec.Alias]
 				if !exists {
-					err = solrClient.AssignAlias(collectionSpec.Alias, collectionName)
+					err = solrClient.AssignAlias(ctx, collectionSpec.Alias, collectionName)
 					if err != nil {
 						logger.Error(err, "create alias failed")
 					}
@@ -881,8 +875,8 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 	// Process delete aliases ...
 	if len(deleteAliasesMap) > 0 {
 		logger.Info("deleting aliases", "aliases", seqToString(maps.Keys(deleteAliasesMap)))
-		for alias, _ := range deleteAliasesMap {
-			err := solrClient.DeleteAlias(alias)
+		for alias := range deleteAliasesMap {
+			err := solrClient.DeleteAlias(ctx, alias)
 			if err != nil {
 				logger.Error(err, fmt.Sprintf("delete alias [%s] failed", alias))
 			}
@@ -893,8 +887,8 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 	// Process delete collections ...
 	if len(deleteCollectionsMap) > 0 {
 		logger.Info("deleting collections", "collections", seqToString(maps.Keys(deleteCollectionsMap)))
-		for collectionName, _ := range deleteCollectionsMap {
-			err := solrClient.DeleteCollection(collectionName)
+		for collectionName := range deleteCollectionsMap {
+			err := solrClient.DeleteCollection(ctx, collectionName)
 			if err != nil {
 				logger.Error(err, fmt.Sprintf("delete collection [%s] failed", collectionName))
 			}
@@ -905,8 +899,8 @@ func (r *SolrCollectionSetReconciler) ManageCollections(ctx context.Context,
 	// Process adjust replication factor ...
 	if len(adjustReplicationFactorMap) > 0 {
 		logger.Info("adjusting replication factor", "collections", seqToString(maps.Keys(deleteCollectionsMap)))
-		for collectionName, _ := range adjustReplicationFactorMap {
-			err := solrClient.SetReplicationFactor(collectionName, *replicationFactor)
+		for collectionName := range adjustReplicationFactorMap {
+			err := solrClient.SetReplicationFactor(ctx, collectionName, *replicationFactor)
 			if err != nil {
 				logger.Error(err, "replication factor update on failed")
 			}
@@ -953,26 +947,31 @@ func checksum(data string) string {
 
 // seqToString Takes a sequence and turns it into a string where the elements are comma delimited
 func seqToString(seq iter.Seq[string]) string {
-	var parts []string
-	for v := range seq {
-		parts = append(parts, v)
+	i := 0
+	for range seq {
+		i++
 	}
+	var parts = make([]string, 0, i)
+	for v := range seq {
+		parts[i] = v
+	}
+	sort.Strings(parts)
 	return strings.Join(parts, ", ")
 }
 
 // createChecksumCollection creates a checksum config set and collection ...
-func createChecksumCollection(checksumsCollectionName string, replicationFactor int32) error {
+func createChecksumCollection(ctx context.Context, checksumsCollectionName string, replicationFactor int32) error {
 	// assume if the collection doesn't exist then the schema doesn't either, so create it ...
 	bytes, err := utils.Zip("checksum_collection_configset", checksumCollectionSchema)
 	if err != nil {
 		return err
 	}
-	err = solrClient.UploadConfigSet(configChecksumsConfigSetName, bytes)
+	err = solrClient.UploadConfigSet(ctx, configChecksumsConfigSetName, bytes)
 	if err != nil {
 		return err
 	}
 	// create the collection
-	err = solrClient.CreateCollection(checksumsCollectionName, configChecksumsConfigSetName, replicationFactor)
+	err = solrClient.CreateCollection(ctx, checksumsCollectionName, configChecksumsConfigSetName, replicationFactor)
 	if err != nil {
 		return err
 	}
@@ -1042,8 +1041,6 @@ func (r *SolrCollectionSetReconciler) RequeueOnError(
 
 // requeue returns a standard delayed requeue ...
 func requeue() (ctrl.Result, error) {
-	// return reconcile.Result{RequeueAfter: time.Second * errorRequeueSeconds}, nil
-	//return requeueImmediately()
 	return reconcile.Result{}, nil
 }
 
@@ -1078,10 +1075,10 @@ func contains(list []string, target string) bool {
 // countSolrCollections counts up the number of collections in the given map MINUS the unmanaged ones ...
 func countSolrCollections(collections map[string]solr.Collection, specCollections []solrCollectionSet.SolrCollection, isBlueGreenEnabled bool) (count int) {
 
-	// Make a list of the specified collections ...
-	var specCollectionList []string
-	for _, collection := range specCollections {
-		specCollectionList = append(specCollectionList, collection.Name)
+	// Make a list of the specified collection names ...
+	var specCollectionList = make([]string, 0, len(specCollections))
+	for i, collection := range specCollections {
+		specCollectionList[i] = collection.Name
 	}
 
 	for _, collection := range collections {
