@@ -22,16 +22,20 @@ spec:
       name: CLUSTER
       type: string
     - description: Is the cluster being actively managed
-      jsonPath: .spec.Active
+      jsonPath: .spec.active
       name: ACTIVE
-      type: bool
+      type: boolean
+    - description: The overall scaling status of the collection set.
+      jsonPath: .status.scaleStatus
+      name: SCALEING
+      type: string
     - description: The ratio of defined vs provisioned collections in the set
       jsonPath: .status.readyRatio
-      name: READY
+      name: COLS
       type: string
     - description: The replication factor of the collection set
       jsonPath: .spec.replicationFactor
-      name: RFACTOR
+      name: R-FAC
       type: integer
     - jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -207,10 +211,7 @@ spec:
 
                   This collection should be treated as a map with a key of 'type'
 
-                  Standard condition types include:
-                  - "Available": the resource is fully functional
-                  - "Progressing": the resource is being created or updated
-                  - "Degraded": the resource failed to reach or maintain its desired state
+                  This operator has only one condition: Stable (ie is the collection set stable?)
 
                   The status of each condition is one of True, False, or Unknown.
                 items:
@@ -281,9 +282,14 @@ spec:
                   in a set have the same replication factor)
                 format: int32
                 type: integer
+              scaleStatus:
+                description: ScaleStatus is the overall scaling status of the collection
+                  set. V
+                type: string
             required:
             - readyRatio
             - replicationFactor
+            - scaleStatus
             type: object
         required:
         - spec

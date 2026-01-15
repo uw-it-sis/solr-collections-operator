@@ -238,7 +238,7 @@ func (r *SolrCollectionSetReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// That means that AdjustReplicas() will sometime get errors because there aren't Solr nodes available to create
 	// replias on (because worker nodes are being created). In that case isScaling will return true.
 	//
-	isScaling, err := r.AdjustReplicas(ctx, *collectionSetSpec, clusterStatus.Collections)
+	isScaling, err := r.AdjustReplicas(ctx, *collectionSetSpec, clusterStatus.Collections, checksumsCollectionName)
 	if err != nil {
 		logger.Error(err, "adjust replicas failed")
 		return r.RequeueOnError(ctx, req, collectionSetSpec, err)
@@ -582,7 +582,8 @@ func conditionsEqual(c1 metav1.Condition, c2 metav1.Condition) (isEqual bool) {
 // AdjustReplicas adjusts the number of Solr replicas to match the spec ...
 func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 	collectionSet solrCollectionSet.SolrCollectionSet,
-	solrCollections map[string]solr.Collection) (isScaling bool, err error) {
+	solrCollections map[string]solr.Collection,
+	checksumCollectionName string) (isScaling bool, err error) {
 
 	logger := log.FromContext(ctx)
 
@@ -595,30 +596,20 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 	// Iterate the collections defined in the Kube spec and determine what updates need to be made to the replica counts ...
 	var adjustReplicas = make(map[string]solr.ReplicationAdjustment)
 	for collectionName, _ := range specCollectionsMap {
-		// collectionName := collectionSpec.Name
 		collection, exists := solrCollections[collectionName]
 		if !exists {
 			logger.Error(fmt.Errorf("couldn't find collection [%s]", collectionName), "")
 		} else {
-			adjustment := *collectionSet.Spec.ReplicationFactor - collection.ReplicaCount
-			if adjustment != 0 {
-				var msg strings.Builder
-				msg.WriteString(fmt.Sprintf("collection %s replication factor is %d and replica count is %d",
-					collectionName, *collectionSet.Spec.ReplicationFactor, collection.ReplicaCount))
-
-				var action = "add"
-				if adjustment < 0 {
-					action = "remove"
-				}
-				msg.WriteString(fmt.Sprintf(" so queueing action to %s %d replicas", action, abs(adjustment)))
-				logger.Info(msg.String())
-
-				adjustReplicas[collectionName] = solr.ReplicationAdjustment{
-					CurrentCount: collection.ReplicaCount,
-					TargetCount:  *collectionSet.Spec.ReplicationFactor,
-				}
-			}
+			queueReplicaAdjustment(collection, *collectionSet.Spec.ReplicationFactor, adjustReplicas, logger)
 		}
+	}
+
+	// Check the checksums collection explicitly (since it isn't in the spec) ....
+	checksumCollection, exists := solrCollections[checksumCollectionName]
+	if exists {
+		queueReplicaAdjustment(checksumCollection, *collectionSet.Spec.ReplicationFactor, adjustReplicas, logger)
+	} else {
+		logger.Error(fmt.Errorf("couldn't find the checksum collection [%s]", checksumCollectionName), "")
 	}
 
 	for collection, adjustment := range adjustReplicas {
@@ -640,6 +631,30 @@ func (r *SolrCollectionSetReconciler) AdjustReplicas(ctx context.Context,
 		}
 	}
 	return false, nil
+}
+
+// queueReplicaAdjustment deals with adding replica adjustments to the queue ...
+func queueReplicaAdjustment(collection solr.Collection, collectionSetReplicationFactor int32,
+	adjustReplicasMap map[string]solr.ReplicationAdjustment, logger logr.Logger) {
+
+	adjustment := collectionSetReplicationFactor - collection.ReplicaCount
+	if adjustment != 0 {
+		var msg strings.Builder
+		msg.WriteString(fmt.Sprintf("collection %s replication factor is %d and replica count is %d",
+			collection.Name, collectionSetReplicationFactor, collection.ReplicaCount))
+
+		var action = "add"
+		if adjustment < 0 {
+			action = "remove"
+		}
+		msg.WriteString(fmt.Sprintf(" so queueing action to %s %d replicas", action, abs(adjustment)))
+		logger.Info(msg.String())
+
+		adjustReplicasMap[collection.Name] = solr.ReplicationAdjustment{
+			CurrentCount: collection.ReplicaCount,
+			TargetCount:  collectionSetReplicationFactor,
+		}
+	}
 }
 
 // ManageConfigSets manages Solr schema config sets ....

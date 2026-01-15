@@ -8,6 +8,7 @@ type ClusterStatus struct {
 
 // Collection is a data structure for holding the status of a particular collection.
 type Collection struct {
+	// The name of the collection (with the blue/green suffix if appropriate)
 	Name string
 	// The current replication factor of the collection.
 	ReplicationFactor int32
