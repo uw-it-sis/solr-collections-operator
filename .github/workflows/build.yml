@@ -23,13 +23,11 @@ jobs:
 
       - name: Install Kubebuilder
         run: |
-          KUBEBUILDER_VERSION=4.10.1
-          curl -L -o kubebuilder.tar.gz "https://go.kubebuilder.io/dl/${KUBEBUILDER_VERSION}/linux/amd64"
-          tar -zxvf kubebuilder.tar.gz
-          sudo mv kubebuilder /usr/local/kubebuilder
-          sudo ln -s /usr/local/kubebuilder/bin/* /usr/local/bin/
+          KUBEBUILDER_VERSION=v4.10.1
+          curl -L -o kubebuilder "https://github.com/kubernetes-sigs/kubebuilder/releases/download/${KUBEBUILDER_VERSION}/kubebuilder_linux_amd64"
+          chmod +x kubebuilder
 
-      - name: Verify installation
+      - name: Verify Kubebuilder
         run: kubebuilder version
 
       - name: Setup Go
