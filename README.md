@@ -32,7 +32,17 @@ NOTES:
   * make manifests
   * kubectl apply -f config/crd/bases/solrcollections.solr.sis.uw.edu_solrcollectionsets.yaml
 * kubebuilder is provided by mise
-
+Helm ...
+* make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.0.0
+  * This creates dist/install.yaml which contains the Kube resources to install the operator with ...
+    * kubectl apply -f https://raw.githubusercontent.com/<org>/project-v4/<tag-or-branch>/dist/install.yaml
+    * Note: I've never installed this way ^^^, but it's the default/built-in way
+* Create Helm chart from kustomize output either to the default location or a custom location ...
+  * kubebuilder edit --plugins=helm/v2-alpha
+  * kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
+    * This creates the charts directory at the top level
+* How to overwrite preserved files if needed
+  * kubebuilder edit --plugins=helm/v2-alpha --force --output-dir=charts
 
 FIXME: Nothing below here has been reviewed/updated to fit our situation 
 
