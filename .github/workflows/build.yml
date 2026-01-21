@@ -16,10 +16,25 @@ jobs:
       - name: Clone the code
         uses: actions/checkout@v4
 
+      - name: Get Version
+        run: |
+          export _VERSION=`cat VERSION`
+          echo "_VERSION=$_VERSION" >> $GITHUB_ENV
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Run linter
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.5.0
+
+      - name: Running Tests
+        run: |
+          go mod tidy
+          make test
 
       - name: Install Kubebuilder
         run: |
@@ -30,12 +45,35 @@ jobs:
       - name: Verify Kubebuilder
         run: ./kubebuilder version
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Running Tests
+      - name: Make Operator Installer
         run: |
-          go mod tidy
-          make test
+          make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v${_VERSION}
+
+      - name: Create Helm Chart
+        run: | 
+          ./kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
+          
+
+  release:
+    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you
+    # will have to add permissions ...
+    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      # https://github.com/marketplace/actions/helm-chart-releaser
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
