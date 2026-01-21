@@ -2,7 +2,11 @@ name: Tests
 
 on:
   push:
-  pull_request:
+    branches:
+      - development
+      - evaluation
+      - patch
+      - master
 
 jobs:
   build:
