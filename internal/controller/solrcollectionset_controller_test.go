@@ -65,10 +65,12 @@ var _ = Describe("SolrCollectionSet Controller", func() {
 							{
 								Name:          "Booz",
 								ConfigsetName: "boozConfigset",
+								Alias:         "booz",
 							},
 							{
 								Name:          "Mooz",
 								ConfigsetName: "moozConfigset",
+								Alias:         "mooz",
 							},
 						},
 					},
