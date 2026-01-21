@@ -21,6 +21,17 @@ jobs:
         with:
           version: v2.5.0
 
+      - name: Install Kubebuilder
+        run: |
+          KUBEBUILDER_VERSION=4.10.1
+          curl -L -o kubebuilder.tar.gz "https://go.kubebuilder.io/dl/${KUBEBUILDER_VERSION}/linux/amd64"
+          tar -zxvf kubebuilder.tar.gz
+          sudo mv kubebuilder /usr/local/kubebuilder
+          sudo ln -s /usr/local/kubebuilder/bin/* /usr/local/bin/
+
+      - name: Verify installation
+        run: kubebuilder version
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
