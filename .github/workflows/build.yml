@@ -28,7 +28,7 @@ jobs:
           chmod +x kubebuilder
 
       - name: Verify Kubebuilder
-        run: kubebuilder version
+        run: ./kubebuilder version
 
       - name: Setup Go
         uses: actions/setup-go@v5
