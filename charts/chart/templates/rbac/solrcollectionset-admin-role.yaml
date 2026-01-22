@@ -1,0 +1,22 @@
+{{- if .Values.rbacHelpers.enable }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/name: solr-collections-operator
+    name: solr-collections-operator-solrcollectionset-admin-role
+rules:
+    - apiGroups:
+        - solrcollections.solr.sis.uw.edu
+      resources:
+        - solrcollectionsets
+      verbs:
+        - '*'
+    - apiGroups:
+        - solrcollections.solr.sis.uw.edu
+      resources:
+        - solrcollectionsets/status
+      verbs:
+        - get
+{{- end }}
