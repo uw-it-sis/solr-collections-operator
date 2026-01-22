@@ -44,6 +44,10 @@ Helm ...
 * How to overwrite preserved files if needed
   * kubebuilder edit --plugins=helm/v2-alpha --force --output-dir=charts
 
+
+
+make help
+
 FIXME: Nothing below here has been reviewed/updated to fit our situation 
 
 **Build and push your image to the location specified by `IMG`:**

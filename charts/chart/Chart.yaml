@@ -2,6 +2,6 @@ apiVersion: v2
 name: solr-collections-operator
 description: A Helm chart to distribute the project solr-collections-operator
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 1.0.0
+appVersion: 1.0.0
 icon: "https://example.com/icon.png"

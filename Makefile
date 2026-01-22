@@ -8,6 +8,14 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+OS := $(shell uname)
+ifeq ($(OS),Darwin)
+	SED_COMMAND = sed -i ''
+else
+	SED_COMMAND = sed -i
+endif
+
+
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
 # scaffolded by default. However, you might want to replace it to use other
@@ -18,6 +26,12 @@ CONTAINER_TOOL ?= docker
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+# Store the project version in a variable
+_VERSION := `cat ./VERSION`
+
+# The top directory for the Helm chart ...
+CHART_DIR = "charts"
 
 .PHONY: all
 all: build
@@ -102,11 +116,26 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 lint-config: golangci-lint ## Verify golangci-lint linter configuration
 	"$(GOLANGCI_LINT)" config verify
 
+.PHONY: version
+version:  ## Print the project version
+	echo $(_VERSION)
+
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
+build: manifests generate fmt vet helm-chart ## Build manager binary.
 	go build -o bin/manager cmd/main.go
+
+.PHONY: fix-chart-version
+fix-chart-version:  ## Updates the Helm chart version to the project version ...
+	$(SED_COMMAND) "s/^version:.*/version: $(_VERSION)/" "$(CHART_DIR)/chart/Chart.yaml"
+	$(SED_COMMAND) "s/^appVersion:.*/appVersion: $(_VERSION)/" "$(CHART_DIR)/chart/Chart.yaml"
+
+.PHONY: helm-chart
+helm-chart: ## Builds the helm chart
+	$(MAKE) build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v$(_VERSION)
+	kubebuilder edit --plugins=helm/v2-alpha --output-dir=$(CHART_DIR)
+	$(MAKE) fix-chart-version
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.

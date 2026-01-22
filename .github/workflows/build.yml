@@ -1,4 +1,4 @@
-name: Tests
+name: Build
 
 on:
   push:
@@ -10,21 +10,11 @@ on:
 
 jobs:
   build:
-    name: Build, Test, Release
+    name: Build and Test
     runs-on: ubuntu-latest
-    permissions:
-      # This is for the helm publish ...
-      contents: write
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get Version
-        run: |
-          export _VERSION=`cat VERSION`
-          echo "_VERSION=$_VERSION" >> $GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -40,31 +30,3 @@ jobs:
         run: |
           go mod tidy
           make test
-
-      - name: Install Kubebuilder
-        run: |
-          KUBEBUILDER_VERSION=v4.10.1
-          curl -L -o kubebuilder "https://github.com/kubernetes-sigs/kubebuilder/releases/download/${KUBEBUILDER_VERSION}/kubebuilder_linux_amd64"
-          chmod +x kubebuilder
-
-      - name: Verify Kubebuilder
-        run: ./kubebuilder version
-
-      - name: Make Operator Installer
-        run: |
-          make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v${_VERSION}
-
-      - name: Create Helm Chart
-        run: | 
-          ./kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
-
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      # https://github.com/marketplace/actions/helm-chart-releaser
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.7.0
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
