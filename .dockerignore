@@ -4,6 +4,7 @@
 
 # Re-include Go source files (but not *_test.go)
 !**/*.go
+!**/checksum_collection_configset/*
 **/*_test.go
 
 # Re-include Go module files
