@@ -12,6 +12,9 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      # This is for the helm publish ...
+      contents: write
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
@@ -52,20 +55,6 @@ jobs:
       - name: Create Helm Chart
         run: | 
           ./kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
-          
-
-  release:
-    # depending on default permission settings for your org (contents being read-only or read-write for workloads), you
-    # will have to add permissions ...
-    # see: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Configure Git
         run: |
