@@ -1,0 +1,15 @@
+apiVersion: v1
+entries:
+  solr-collections-operator:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-01-22T01:23:34.04249634Z"
+    description: A Helm chart to distribute the project solr-collections-operator
+    digest: 5702a67185cecca265e80c9f0ff98f9ae0598b0e4ad13db6588af6be75054194
+    icon: https://example.com/icon.png
+    name: solr-collections-operator
+    type: application
+    urls:
+    - https://github.com/uw-it-sis/solr-collections-operator/releases/download/solr-collections-operator-0.1.0/solr-collections-operator-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-01-22T01:23:34.042502191Z"
