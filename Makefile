@@ -133,7 +133,7 @@ fix-chart-version:  ## Updates the Helm chart version to the project version ...
 
 .PHONY: helm-chart
 helm-chart: ## Builds the helm chart
-	$(MAKE) build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v$(_VERSION)
+	$(MAKE) build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:$(_VERSION)
 	kubebuilder edit --plugins=helm/v2-alpha --output-dir=$(CHART_DIR)
 	$(MAKE) fix-chart-version
 

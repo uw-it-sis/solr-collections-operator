@@ -583,7 +583,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: controller:latest
+        image: ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:1.0.0
         livenessProbe:
           httpGet:
             path: /healthz
