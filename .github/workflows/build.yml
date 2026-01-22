@@ -8,6 +8,11 @@ on:
       - patch
       - master
 
+env:
+  COLLECTIVE: planning
+  _ARTIFACT: solr-collections-operator
+
+
 jobs:
   build:
     name: Build and Test
@@ -15,6 +20,11 @@ jobs:
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
+
+      - name: Get Version
+        run: |
+          export _VERSION=`cat VERSION`
+          echo "_VERSION=$_VERSION" >> $GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -30,3 +40,12 @@ jobs:
         run: |
           go mod tidy
           make test
+          
+      - name: Build and Publish Docker Image
+        run: |
+          cd planning-web
+          # Log in with a shared read-only secret to access our base image - GITHUB_TOKEN can't access it
+          echo "${{ secrets.CI_ACCESS_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+          make docker-build docker-push IMG=ghcr.io/${{github.repository}}/$_ARTIFACT:$_VERSION 
+          # Use the builtin GITHUB_TOKEN to publish the docker image under this repo
+          docker push ghcr.io/${{github.repository}}/$_ARTIFACT:$_VERSION
