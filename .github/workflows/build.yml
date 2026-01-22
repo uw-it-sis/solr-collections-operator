@@ -45,6 +45,4 @@ jobs:
         run: |
           # Log in with a shared read-only secret to access our base image - GITHUB_TOKEN can't access it
           echo "${{ secrets.CI_ACCESS_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
-          make docker-build docker-push IMG=ghcr.io/${{github.repository}}/$_ARTIFACT:$_VERSION 
-          # Use the builtin GITHUB_TOKEN to publish the docker image under this repo
-          docker push ghcr.io/${{github.repository}}/$_ARTIFACT:$_VERSION
+          make docker-build docker-push IMG=ghcr.io/${{github.repository}}/$_ARTIFACT:$_VERSION
