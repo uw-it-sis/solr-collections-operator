@@ -133,6 +133,8 @@ fix-chart-version:  ## Updates the Helm chart version to the project version ...
 
 .PHONY: helm-chart
 helm-chart: ## Builds the helm chart
+	# TODO: Switch to the plugin target ... https://github.com/kubernetes-sigs/kubebuilder/issues/5351
+	# FIXME: This doesn't update the dist/install.yaml for some reason
 	$(MAKE) build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:$(_VERSION)
 	kubebuilder edit --plugins=helm/v2-alpha --output-dir=$(CHART_DIR)
 	$(MAKE) fix-chart-version

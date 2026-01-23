@@ -104,12 +104,6 @@ type SolrCollectionSetReconciler struct {
 	Recorder record.EventRecorder
 }
 
-// Access controls for the resources ...
-// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-//
 // Reconcile is part of the main kubernetes reconciliation loop which aims to move the current state of the cluster
 // closer to the desired state. To do that it compares the state specified by the SolrCollectionSet object against the
 // actual cluster state, and then performs operations to make the cluster state reflect the state specified by
@@ -124,6 +118,16 @@ type SolrCollectionSetReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.4/pkg/reconcile
+//
+// !!! NOTE: That blank line below the "secrets" marker is necessary, otherwise the markers will be ignored (SMH)  !!!
+//
+// Access controls for the resources ...
+// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+
 func (r *SolrCollectionSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
