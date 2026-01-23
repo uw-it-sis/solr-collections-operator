@@ -957,8 +957,11 @@ func seqToString(seq iter.Seq[string]) string {
 		i++
 	}
 	var parts = make([]string, i)
+
+	i = 0
 	for v := range seq {
 		parts[i] = v
+		i++
 	}
 	sort.Strings(parts)
 	return strings.Join(parts, ", ")
