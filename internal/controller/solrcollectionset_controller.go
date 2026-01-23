@@ -1080,7 +1080,7 @@ func contains(list []string, target string) bool {
 func countSolrCollections(collections map[string]solr.Collection, specCollections []solrCollectionSet.SolrCollection, isBlueGreenEnabled bool) (count int) {
 
 	// Make a list of the specified collection names ...
-	var specCollectionList = make([]string, 0, len(specCollections))
+	var specCollectionList = make([]string, len(specCollections))
 	for i, collection := range specCollections {
 		specCollectionList[i] = collection.Name
 	}
