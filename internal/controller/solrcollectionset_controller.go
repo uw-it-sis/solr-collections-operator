@@ -127,6 +127,7 @@ type SolrCollectionSetReconciler struct {
 // +kubebuilder:rbac:groups=solrcollections.solr.sis.uw.edu,resources=solrcollectionsets/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 func (r *SolrCollectionSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
