@@ -956,7 +956,7 @@ func seqToString(seq iter.Seq[string]) string {
 	for range seq {
 		i++
 	}
-	var parts = make([]string, 0, i)
+	var parts = make([]string, i)
 	for v := range seq {
 		parts[i] = v
 	}
