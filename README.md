@@ -9,46 +9,166 @@ The operator handles ...
 * Adding or removing replicas 
 * Managing Solr config sets (aka collection schemas)
 
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 - go version v1.24.6+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
-### To Deploy on the cluster
+The kubebuilder can be provided by mise
+
+## Overview
+
+### The Operator Pattern
+Basically, operators are long-running apps that manage a Kubernetes resource of some sort. 
+For example the autoscaling operator manages worker nodes, the Solr Operator manages Solr cluster
+deployaments, the Solr Collections operator (this app) manages the collections that are deployed 
+on a Solr cluster.
+
+The primary building block for an operator is the Custom Resource Definition (CRD). The CRD is
+effectively the schema for Kubernetes resources (manifests) which hold the desired state of the resource the
+operator will manage. The main resource for this operator is SolrCollectionSet. An instance of
+SolrCollectionSet defines the collections you would like to have in the Solr cluster.
+
+The operators job is to listen for changes to CRD instances. When changes occur to the CRD instance
+the operator attempts to bring the state of the managed resource in line with the state of the CRD
+instance.
+
+See Kube Commands for info on how to see operator related resources in Kuberntes
+
+### Project Setup
+This project was initiated with Kubebuilder by going ...
+```sh
+kubebuilder init --domain solr.sis.uw.edu --repo github.com/uw-it-sis/solr-collections-operator
+kubebuilder create api --group solrcollections --version v1 --kind SolrCollectionSet
+```
+The docs for Kubebuilder are at https://book.kubebuilder.io/
+
+### Make
+The project leans heavily on Make for common operators. 
+Make's targets are defined in file, Makefile. Most of the stuff in there came from Kubebuilder, but
+I also added some targets.
+
+### Generated Code
+This project also embraces the concept of generated code. CRDs, the install.yaml file, the Helm chart, and other stuff
+is actually generated from a curious mixture of Go structs and annotations (which Kubebuilder refs to as "markers").
+Often when you change something you'll have to run a make target to have the generated code updated.
+
+### Run/Change/Test
+
+To work out the operator logic the app can run locally with ...
+
+    make run
+
+IntelliJ also knows how to run Go programs. 
+
+However, the operator will connect to whichever Kubernetes cluster is refereneced in `~/.kube/config`, 
+so there's a fair amount of potential for destruction. **So, do be careful.**
+
+You'll also need to establish a tunnel to the Solr cluster you want to run against like ...
+
+    ssh -i ~/.ssh/aws_rsa shell.planning-dev.sis.uw.edu -L8983:solr.planning-dev.local.net:8983
+
+### Custom Resource Definitions (CRD)
+
+In the project the CRDs are defined in `api/v1/solrcollectionset_types.go`.
+
+CRDs are composed of Go struts with markers for validations and other functionality 
+See https://book.kubebuilder.io/reference/markers/crd-validation.html
+
+An important thing to understand is that if you change the markers or the types or anything else related to the CRD 
+the generated code will need to updated as well by going ...
+
+    make manifests
+... or ....
+
+    make build (which in turn calls make manifests)
+
+This will update the file `config/crd/bases/solrcollections.solr.sis.uw.edu_solrcollectionsets.yaml`.
+
+It's also important to know that if you are running locally the CRDs have to be installed on the Kubernetes cluster by 
+going ...
+
+    kubectl apply -f config/crd/bases/solrcollections.solr.sis.uw.edu_solrcollectionsets.yaml
+
+The Helm chart automatically installs the CRDs, so this step is only necessary if you are trying to run locally and
+the operator Helm chart isn't installed. However, if you install the CRDs manually and then try to install the Helm
+chart the chart will fail because the manually installed CRDs are in the way. To overcome this issue you can manually
+delete the CRDs with ...
+
+    kubectl delete crd solrcollectionsets.solrcollections.solr.sis.uw.edu
+
+Note that deleting the CRDs will also delete any instances of the CRD, so yea. That happens.
+
+Also, not that deleting the Helm chart will remove the CRDs, manifests, and the operator itself. However, this won't 
+affect the Solr cluster or the collections themselves.
+
+### The Helm Chart
+
+The Kubebuilder Helm chart plugin generates artifacts based on the contents of `dist/install.yaml`
+
+To manually generate `dist/install.yaml` you can go ...
+
+    make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.0.0
+
+... where v1.0.0 is the version of the project. 
+
+To manually update the Helm chart once `dist/install.yaml` has been updated you can go ...
+
+    kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
+
+Chart.yaml is never overwritten. The files `values.yaml`, `_helpers.tpl`, `.helmignore`, and 
+`.github/workflows/test-chart.yml` are preserved, meaning that they won't be overwritten unless you go ...
+
+    kubebuilder edit --plugins=helm/v2-alpha --force --output-dir=charts
+
+See https://kubebuilder.io/plugins/available/helm-v2-alpha for additional info about the Helm chart plugin.
+
+The Helm chart is published as a Github Pages page paired with a release this is accomplished with the 
+chart-releaser action (https://github.com/helm/chart-releaser-action).
+
+To get Pages to work I had to create an empty gn-pages branch. Also, had to make the repo and the page public.
+
+## Devving
+
+### Deploy changes to Helm chart 
+
+
+### Useful Kube Commands
+
+You can see what CRDs are installed in a Kubernetes cluster by going ...
+
+    kubectl get crds
+
+To see details of a CRD you can go ...
+
+    kubectl describe crd <crd.name>
+    kubectl describe solrcollectionsets.solrcollections.solr.sis.uw.edu
+
+To see the details of a CRD prop by prop you can go ...
+
+    kubectl explain <crd.prop.subprop>
+    kubectl explain solrcollectionsets.solrcollections.solr.sis.uw.edu
+    kubectl explain solrcollectionsets.solrcollections.solr.sis.uw.edu.spec
+
+To see the operator pod you can go ...
+
+    kubectl get pods
+
+To see what the operator is upto you can go ... 
+
+    kubectl logs -f <pod-name>
+
 
 NOTES:
-* The project was setup with kubebuilder like ...
-  * kubebuilder init --domain example.com --repo github.com/your-username/my-operator
-  * kubebuilder create api --group mygroup --version v1 --kind MyResource
-  * The docs for kubebuilder are here ... https://book.kubebuilder.io/
-* The project uses a Makefile for various things
-  * 
-* The operator can run locally. It will read your current kubectl config to talk to a cluster. SO BE CAREFUL.
-  * You'll need a tunnel to the solr cluster and that'll require a localhost address in the CRD
-* If you update the CRD defs they have to deployed to the cluster like ...
-  * make manifests
-  * kubectl apply -f config/crd/bases/solrcollections.solr.sis.uw.edu_solrcollectionsets.yaml
-* kubebuilder is provided by mise
-Helm ...
-* make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.0.0
-  * This creates dist/install.yaml which contains the Kube resources to install the operator with ...
-    * kubectl apply -f https://raw.githubusercontent.com/<org>/project-v4/<tag-or-branch>/dist/install.yaml
-    * Note: I've never installed this way ^^^, but it's the default/built-in way
-* Create Helm chart from kustomize output either to the default location or a custom location ...
-  * kubebuilder edit --plugins=helm/v2-alpha
-  * kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
-    * This creates the charts directory at the top level
-* How to overwrite preserved files if needed
-  * kubebuilder edit --plugins=helm/v2-alpha --force --output-dir=charts
 
 
-
-make help
+* To see what Make targets are available go ... 
+  *  make help
 
 FIXME: Nothing below here has been reviewed/updated to fit our situation 
+
+### To Deploy on the cluster (Note: We don't do it this way. Instead we create a Helm chart and deploy that with Terraform)
 
 **Build and push your image to the location specified by `IMG`:**
 
