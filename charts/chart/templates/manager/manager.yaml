@@ -16,10 +16,17 @@ spec:
     template:
         metadata:
             annotations:
+                prometheus.io/scrape: "true"
                 kubectl.kubernetes.io/default-container: manager
+                {{- if .Values.manager.annotations }}
+                {{- toYaml .Values.manager.annotations | nindent 16 }}
+                {{- end }}
             labels:
                 app.kubernetes.io/name: solr-collections-operator
                 control-plane: controller-manager
+                {{- if .Values.manager.labels }}
+                {{- toYaml .Values.manager.labels | nindent 16 }}
+                {{- end }}
         spec:
             containers:
                 - args:
@@ -73,3 +80,11 @@ spec:
             serviceAccountName: solr-collections-operator-controller-manager
             terminationGracePeriodSeconds: 10
             volumes: []
+            {{- if .Values.manager.nodeSelector }}
+            nodeSelector:
+              {{- toYaml .Values.manager.nodeSelector | nindent 14 }}
+            {{- end }}
+            {{- if .Values.manager.affinity }}
+            affinity:
+              {{- toYaml .Values.manager.affinity | nindent 14 }}
+            {{- end }}

@@ -44,6 +44,12 @@ kubebuilder create api --group solrcollections --version v1 --kind SolrCollectio
 ```
 The docs for Kubebuilder are at https://book.kubebuilder.io/
 
+This project produces two artifacts:
+* A Docker image which contains the operator binary
+  * The docker image is published as a GitHub package just like our other images
+* A Helm chart for deploying the Docker image into Kubernetes
+  * It is published as a GitHub Page which references a GitHub release by the chart-releaser action
+
 ### Make
 The project leans heavily on Make for common operators. 
 Make's targets are defined in file, Makefile. Most of the stuff in there came from Kubebuilder, but
@@ -129,10 +135,49 @@ chart-releaser action (https://github.com/helm/chart-releaser-action).
 
 To get Pages to work I had to create an empty gn-pages branch. Also, had to make the repo and the page public.
 
-## Devving
+If you need a Kubernetes cluster for devving the helm chart you can use Kind https://kind.sigs.k8s.io/
+To set up a cluster with Kind you can go ...
+```sh
+kind create cluster --kubeconfig kind_config --name testing
+export KUBECONFIG="$(pwd)/kind_config"
+```
 
-### Deploy changes to Helm chart 
+Those commands will create the cluster using Docker and a config file which points to the cluster and make kubectl and helm
+use the config file for the testing cluster.
 
+To tear it down go ...
+```shell
+kind delete cluster --name testing
+```
+
+Here are some helpful Helm operations ...
+```shell
+# Install the chart into the testing cluster ...
+helm install solr-collections-operators ./charts/chart
+
+# Run tests (assuming some tests exist) ...
+helm test solr-collections-operators
+# Run tests with output
+helm test solr-collections-operators --logs
+
+# Lint chart for errors
+helm lint ./charts/chart
+
+# Template locally (See the generated YAML)
+helm template solr-collections-operators  ./charts/chart
+# Template with custom values. This is very useful for working out indentation and stuff ...
+helm template solr-collections-operators  ./charts/chart -f custom-values.yaml
+
+# Dry run install
+helm install solr-collections-operators ./charts/chart --dry-run --debug
+
+# Package chart
+helm package ./charts/chart
+# Outputs solr-collections-operators-1.0.0.tgz
+
+# Install from package
+helm install solr-collections-operators ./solr-collections-operators-1.0.0.tgz
+```
 
 ### Useful Kube Commands
 
@@ -159,14 +204,37 @@ To see what the operator is upto you can go ...
 
     kubectl logs -f <pod-name>
 
+## Devving
 
-NOTES:
+### Republish the Helm chart at the same version 
+If you want to adjust the Helm chart, but not publish a new version of the Helm chart ...
+* Make your code changes. If you change the CRDs or the annotations or anything else that not just a change to application
+  logic you'll need to update the generated code by running the applicable make targets
+* In the GitHub console go to the Helm chart release that you intend to overwrite and delete it
+* Commit your changes being careful to verify that the things you think should have gotten updated did in fact get updated.
+  For instance the files in charts/chart are the changes you expect.
+* Since the Helm chart publishing job only runs on tags you'll need to remove the tag for the release you intend to 
+  replace and then recreate it. This will cause the Helm chart to be updated and republished.
+* In Terraform destroy the chart and then recreate it
+
+### Publish the Helm chart at a new version
+If you want to release a new version of the Helm chart ..
+* Update the VERSION file
+* Make your changes
+* Run `make build`
+* Commit your changes being careful to verify that the things you think should have gotten updated did in fact get updated.
+  For instance the files in charts/chart are the changes you expect.
+* Update the chart version in the infra- code
+* Run `terraform apply` 
+
+### Change the operator's application logic (and not the Kubernetes/Helm-related assets) 
+If you just need to make a change to the operator code and redeploy all you need to do is ...
+* Make the code change and commit
+* The build will publish the docker image at the same version (for better or worse, overwriting the existing image)
+* Bounce the operator pod and the new image will be pulled as the image pull strategy defaults to "Always"
 
 
-* To see what Make targets are available go ... 
-  *  make help
-
-FIXME: Nothing below here has been reviewed/updated to fit our situation 
+FIXME: Nothing below here has been reviewed/updated to fit our situation, but it's still somewhat relevant. Just be careful.
 
 ### To Deploy on the cluster (Note: We don't do it this way. Instead we create a Helm chart and deploy that with Terraform)
 
