@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -769,6 +770,25 @@ func (r *SolrCollectionSetReconciler) ManageConfigSets(ctx context.Context, coll
 		if err != nil {
 			return fmt.Errorf("could not write checksum to %s for collection %s", checksumCollectionName, collection)
 		}
+
+		// Trigger a reload of the collection in Solr
+		// If blue/green collection sets are enabled, reload both the blue and green replicas
+		var collectionNamesToReload []string
+		if *collectionSet.Spec.BlueGreenEnabled {
+			collectionNamesToReload = append(collectionNamesToReload, collection+"_blue")
+			collectionNamesToReload = append(collectionNamesToReload, collection+"_green")
+		} else {
+			collectionNamesToReload = append(collectionNamesToReload, collection)
+		}
+
+		for _, collectionName := range collectionNamesToReload {
+			err = solrClient.ReloadCollection(ctx, collectionName)
+			if err != nil {
+				logger.Error(err, "Caught error from solr client")
+				return fmt.Errorf("failed to reload collection %s after update to configset", collectionName)
+			}
+			logger.Info(fmt.Sprintf("Collection reloaded after configset change: [%s]", collectionName))
+		}
 	}
 
 	// Process removes ...
@@ -1121,5 +1141,29 @@ func countSpecifiedCollections(collections []solrCollectionSet.SolrCollection, i
 // SetupWithManager sets up the controller with the Manager.
 func (r *SolrCollectionSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&solrCollectionSet.SolrCollectionSet{}).Named("solrcollectionset").Complete(r)
+		For(&solrCollectionSet.SolrCollectionSet{}).Named("solrcollectionset").
+		Watches(
+			// Add a watch on configmaps that match the label
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				// Check any configMap resource that has a matching 'collectionSet' label with the name of the managed SolrCollectionSet
+				val, ok := obj.GetLabels()["collectionSet"]
+				if ok && len(val) > 0 {
+					logger := log.FromContext(ctx)
+					logger.Info(fmt.Sprintf("Triggering reconcile to solrcollectionset [%s] due to change in configmap: [%s]", val, obj.GetName()))
+					// If the label is present and has some value, trigger the SolrCollectionSet with the same name as the label value
+					return []reconcile.Request{
+						{
+							NamespacedName: types.NamespacedName{
+								Name:      val,
+								Namespace: obj.GetNamespace(),
+							},
+						},
+					}
+				}
+				// If the label is not present or doesn't match, don't trigger reconciliation
+				return []reconcile.Request{}
+			}),
+		).
+		Complete(r)
 }
