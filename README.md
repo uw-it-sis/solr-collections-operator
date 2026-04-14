@@ -222,8 +222,10 @@ If you want to release a new version of the Helm chart ..
 * Update the VERSION file
 * Make your changes
 * Run `make build`
+* make build updates the version in Chart.yaml as well as some other files in the chart repo?
 * Commit your changes being careful to verify that the things you think should have gotten updated did in fact get updated.
   For instance the files in charts/chart are the changes you expect.
+* At this stage create a git tag and push it. release.yml gets run on a tag change and chart-releaser reads whatever version Chart.yaml says in the repo.
 * Update the chart version in the infra- code
 * Run `terraform apply` 
 
