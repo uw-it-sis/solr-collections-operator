@@ -14,8 +14,14 @@ The operator handles ...
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
+- kubebuilder at the version defined in `mise.toml`
 
-The kubebuilder can be provided by mise
+<span style="color:red; font-weight:bold;">!!! NOTE !!!</span>
+
+It is very important to use the version of Kubebuilder defined in the project's `mise.toml`. The easiest way to
+do this is to simply use Mise to install and run the kubebuilder binary. You can certainly install the binary
+other ways, but if the version of the binary creeps the generated files could change in a way that will get
+reverted when someone else works on the repo.
 
 ## Overview
 
@@ -115,9 +121,9 @@ The Kubebuilder Helm chart plugin generates artifacts based on the contents of `
 
 To manually generate `dist/install.yaml` you can go ...
 
-    make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.0.0
+    make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.2.0
 
-... where v1.0.0 is the version of the project. 
+... where v1.2.0 is the version of the project. 
 
 To manually update the Helm chart once `dist/install.yaml` has been updated you can go ...
 
@@ -208,7 +214,7 @@ To see what the operator is upto you can go ...
 
 ### Republish the Helm chart at the same version 
 If you want to adjust the Helm chart, but not publish a new version of the Helm chart ...
-* Make your code changes. If you change the CRDs or the annotations or anything else that not just a change to application
+* Make your code changes. If you change the CRDs or the annotations or anything else that's not just a change to application
   logic you'll need to update the generated code by running the applicable make targets
 * In the GitHub console go to the Helm chart release that you intend to overwrite and delete it
 * Commit your changes being careful to verify that the things you think should have gotten updated did in fact get updated.
