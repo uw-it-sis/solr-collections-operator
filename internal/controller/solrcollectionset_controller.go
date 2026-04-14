@@ -106,7 +106,7 @@ const (
 	backoffRequeueSeconds = 20
 )
 
-// This annotation is what causes the files to become embedded ...
+// This annotation is what causes the files within the `checksum_collection_configset` directory to become embedded ...
 // vvvvvvv
 //
 //go:embed checksum_collection_configset

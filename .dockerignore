@@ -5,6 +5,8 @@
 # Re-include Go source files (but not *_test.go)
 !**/*.go
 **/*_test.go
+# Add the Solr schema and config files so that they can be embedded in the binary ...
+!**/checksum_collection_configset/*
 
 # Re-include Go module files
 !go.mod
