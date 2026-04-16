@@ -3,8 +3,8 @@ name: solr-collections-operator
 description: A Helm chart to distribute solr-collections-operator
 type: application
 
-version: 1.2.0
-appVersion: 1.2.0
+version: 1.3.0
+appVersion: 1.3.0
 
 keywords:
   - kubernetes
