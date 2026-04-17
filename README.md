@@ -9,13 +9,21 @@ The operator handles ...
 * Adding or removing replicas 
 * Managing Solr config sets (aka collection schemas)
 
-## Prerequisites
+## Getting Started
+
+### Prerequisites
 - go version v1.24.6+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
+- kubebuilder at the version defined in `mise.toml`
 
-The kubebuilder can be provided by mise
+<span style="color:red; font-weight:bold;">!!! READE THIS NOTE !!!</span>
+
+It is very important to use the version of Kubebuilder defined in the project's `mise.toml`. The easiest way to
+do this is to simply use Mise to install and run the kubebuilder binary. You can certainly install the binary
+other ways, but if the version of the binary creeps the generated files could change in a way that will get
+reverted when someone else works on the repo.
 
 ## Overview
 
@@ -59,6 +67,14 @@ I also added some targets.
 This project also embraces the concept of generated code. CRDs, the install.yaml file, the Helm chart, and other stuff
 is actually generated from a curious mixture of Go structs and annotations (which Kubebuilder refs to as "markers").
 Often when you change something you'll have to run a make target to have the generated code updated.
+
+To update the generated code and binaries you can go ...
+
+    `make build`
+
+To update the generated code, binaries, and the Helm chart go ...
+
+    `make build-all`
 
 ### Run/Change/Test
 
@@ -111,20 +127,35 @@ affect the Solr cluster or the collections themselves.
 
 ### The Helm Chart
 
-The Kubebuilder Helm chart plugin generates artifacts based on the contents of `dist/install.yaml`
+The Kubebuilder Helm chart plugin generates artifacts based on the contents of `dist/install.yaml`, so it's important
+that it be uptodate before generating the Helm chart updates.
+
+It's also important to understand that the build will only publish the Helm chart. Not update it. 
+
+To update the Helm chart using make go ...
+
+    make build-all
+
+... to rebuild the operator binary and the Helm chart or just ...
+
+    make helm-chart
+
+... to adjust the Helm chart. This will update the install.yaml file, update the Helm chart versions based on the 
+VERSION file, and generate the chart.
 
 To manually generate `dist/install.yaml` you can go ...
 
-    make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:v1.0.0
+    make build-installer IMG=ghcr.io/uw-it-sis/solr-collections-operator/solr-collections-operator:1.2.0
 
-... where v1.0.0 is the version of the project. 
+... where 1.2.0 is the version of the project. 
 
 To manually update the Helm chart once `dist/install.yaml` has been updated you can go ...
 
     kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts
 
-Chart.yaml is never overwritten. The files `values.yaml`, `_helpers.tpl`, `.helmignore`, and 
-`.github/workflows/test-chart.yml` are preserved, meaning that they won't be overwritten unless you go ...
+Chart.yaml is not overwritten by this command. 
+The files `values.yaml`, `_helpers.tpl`, `.helmignore`, and `.github/workflows/test-chart.yml` are preserved, 
+meaning that they won't be overwritten unless you pass it the `--force` flag like ...
 
     kubebuilder edit --plugins=helm/v2-alpha --force --output-dir=charts
 
@@ -133,9 +164,10 @@ See https://kubebuilder.io/plugins/available/helm-v2-alpha for additional info a
 The Helm chart is published as a Github Pages page paired with a release this is accomplished with the 
 chart-releaser action (https://github.com/helm/chart-releaser-action).
 
-To get Pages to work I had to create an empty gn-pages branch. Also, had to make the repo and the page public.
+To get Pages to work I had to create an empty gh-pages branch. Also, had to make the repo and the page public.
 
-If you need a Kubernetes cluster for devving the helm chart you can use Kind https://kind.sigs.k8s.io/
+####  If you need a Kubernetes cluster for devving 
+The helm chart you can use Kind https://kind.sigs.k8s.io/
 To set up a cluster with Kind you can go ...
 ```sh
 kind create cluster --kubeconfig kind_config --name testing
@@ -150,7 +182,7 @@ To tear it down go ...
 kind delete cluster --name testing
 ```
 
-Here are some helpful Helm operations ...
+#### Here are some helpful Helm operations ...
 ```shell
 # Install the chart into the testing cluster ...
 helm install solr-collections-operators ./charts/chart
@@ -178,6 +210,30 @@ helm package ./charts/chart
 # Install from package
 helm install solr-collections-operators ./solr-collections-operators-1.0.0.tgz
 ```
+
+### Migrating to a new version  of Kubebuilder
+
+Because of the generated code aspect of this project when you update the `kubebuilder` binary it's important that you
+migrate the project so that you get the latest innovations. This basically means regenerating files and pulling in updates. 
+
+There are a few approaches for this which are outlined here: https://book.kubebuilder.io/migrations.html
+
+This is the one I've used is `Regenerate with Help and Merge Manually`. 
+
+Basically, what this does is blast the project and then regenerate it. You can then use IJI or whatever to look at the 
+changes that have been made to the working copy and adjust the changes so that you don't lose our customizations.
+
+It's very important to note that files we have specifically added to the repo get clobbered and have to be brought back
+with ... 
+
+    git restore .github/workflows/hold/release_helm_chart.yml .github/workflows/release.yml
+
+You can see what's staged for delete by going ...
+
+    git status | deleted
+
+I found that diffing each file against the remote development branch (using Git->Compare With Branch) made it pretty
+straight forward to get things resolved.
 
 ### Useful Kube Commands
 
@@ -208,7 +264,7 @@ To see what the operator is upto you can go ...
 
 ### Republish the Helm chart at the same version 
 If you want to adjust the Helm chart, but not publish a new version of the Helm chart ...
-* Make your code changes. If you change the CRDs or the annotations or anything else that not just a change to application
+* Make your code changes. If you change the CRDs or the annotations or anything else that's not just a change to application
   logic you'll need to update the generated code by running the applicable make targets
 * In the GitHub console go to the Helm chart release that you intend to overwrite and delete it
 * Commit your changes being careful to verify that the things you think should have gotten updated did in fact get updated.
@@ -346,7 +402,7 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 
 ## License
 
-Copyright 2025.
+Copyright 2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
