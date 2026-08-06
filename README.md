@@ -211,7 +211,7 @@ helm package ./charts/chart
 helm install solr-collections-operators ./solr-collections-operators-1.0.0.tgz
 ```
 
-### Migrating to a new version  of Kubebuilder
+### Migrating to a new version of Kubebuilder
 
 Because of the generated code aspect of this project when you update the `kubebuilder` binary it's important that you
 migrate the project so that you get the latest innovations. This basically means regenerating files and pulling in updates. 
@@ -274,7 +274,7 @@ If you want to adjust the Helm chart, but not publish a new version of the Helm 
 * In Terraform destroy the chart and then recreate it
 
 ### Publish the Helm chart at a new version
-If you want to release a new version of the Helm chart ..
+If you want to release a new version of the Helm chart ...
 * Update the VERSION file
 * Make your changes
 * Run `make build`
