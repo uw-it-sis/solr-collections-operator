@@ -186,6 +186,7 @@ func main() {
 		setupLog.Error(err, "Failed to create controller", "controller", "SolrCollectionSet")
 		os.Exit(1)
 	}
+
 	// +kubebuilder:scaffold:builder
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up health check")
