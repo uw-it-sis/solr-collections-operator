@@ -4,6 +4,21 @@ entries:
   - annotations:
       kubebuilder.io/generated-by: kubebuilder
     apiVersion: v2
+    appVersion: 1.3.1
+    created: "2026-08-07T00:43:15.997624648Z"
+    description: A Helm chart to distribute solr-collections-operator
+    digest: 72a649e87db5ff336f61c29296117a6bb44ac5e061bf77203da1412da1c45409
+    keywords:
+    - kubernetes
+    - operator
+    name: solr-collections-operator
+    type: application
+    urls:
+    - https://github.com/uw-it-sis/solr-collections-operator/releases/download/solr-collections-operator-1.3.1/solr-collections-operator-1.3.1.tgz
+    version: 1.3.1
+  - annotations:
+      kubebuilder.io/generated-by: kubebuilder
+    apiVersion: v2
     appVersion: 1.3.0
     created: "2026-04-17T23:32:56.0987535Z"
     description: A Helm chart to distribute solr-collections-operator
@@ -49,4 +64,4 @@ entries:
     urls:
     - https://github.com/uw-it-sis/solr-collections-operator/releases/download/solr-collections-operator-0.1.0/solr-collections-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-17T23:32:56.098775532Z"
+generated: "2026-08-07T00:43:15.997645077Z"
